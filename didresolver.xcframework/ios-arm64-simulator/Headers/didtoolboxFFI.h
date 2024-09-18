@@ -83,6 +83,8 @@ void*_Nonnull uniffi_didtoolbox_fn_constructor_diddocumentstate_from(RustBuffer 
 );
 void*_Nonnull uniffi_didtoolbox_fn_method_diddocumentstate_validate(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
+void*_Nonnull uniffi_didtoolbox_fn_method_diddocumentstate_validate_with_scid(void*_Nonnull ptr, RustBuffer scid, RustCallStatus *_Nonnull out_status
+);
 void*_Nonnull uniffi_didtoolbox_fn_clone_ed25519keypair(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 void uniffi_didtoolbox_fn_free_ed25519keypair(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
@@ -128,11 +130,11 @@ void uniffi_didtoolbox_fn_free_trustdidweb(void*_Nonnull ptr, RustCallStatus *_N
 );
 void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidweb_create(RustBuffer url, void*_Nonnull key_pair, RustBuffer allow_http, RustCallStatus *_Nonnull out_status
 );
-void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidweb_deactivate(RustBuffer did_tdw, RustBuffer did_log, void*_Nonnull key_pair, RustCallStatus *_Nonnull out_status
+void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidweb_deactivate(RustBuffer did_tdw, RustBuffer did_log, void*_Nonnull key_pair, RustBuffer allow_http, RustCallStatus *_Nonnull out_status
 );
 void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidweb_read(RustBuffer did_tdw, RustBuffer allow_http, RustCallStatus *_Nonnull out_status
 );
-void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidweb_update(RustBuffer did_tdw, RustBuffer did_log, RustBuffer did_doc, void*_Nonnull key_pair, RustCallStatus *_Nonnull out_status
+void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidweb_update(RustBuffer did_tdw, RustBuffer did_log, RustBuffer did_doc, void*_Nonnull key_pair, RustBuffer allow_http, RustCallStatus *_Nonnull out_status
 );
 RustBuffer uniffi_didtoolbox_fn_method_trustdidweb_get_did(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
@@ -297,6 +299,9 @@ uint16_t uniffi_didtoolbox_checksum_method_diddoc_get_verification_method(void
     
 );
 uint16_t uniffi_didtoolbox_checksum_method_diddocumentstate_validate(void
+    
+);
+uint16_t uniffi_didtoolbox_checksum_method_diddocumentstate_validate_with_scid(void
     
 );
 uint16_t uniffi_didtoolbox_checksum_method_ed25519keypair_get_signing_key(void

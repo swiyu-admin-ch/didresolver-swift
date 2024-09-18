@@ -527,6 +527,8 @@ public func FfiConverterTypeDidDoc_lower(_ value: DidDoc) -> UnsafeMutableRawPoi
 
 public protocol DidDocumentStateProtocol: AnyObject {
     func validate() -> DidDoc
+
+    func validateWithScid(scid: String?) -> DidDoc
 }
 
 public class DidDocumentState:
@@ -562,6 +564,16 @@ public class DidDocumentState:
             try!
                 rustCall {
                     uniffi_didtoolbox_fn_method_diddocumentstate_validate(self.uniffiClonePointer(), $0)
+                }
+        )
+    }
+
+    public func validateWithScid(scid: String?) -> DidDoc {
+        return try! FfiConverterTypeDidDoc.lift(
+            try!
+                rustCall {
+                    uniffi_didtoolbox_fn_method_diddocumentstate_validate_with_scid(self.uniffiClonePointer(),
+                                                                                    FfiConverterOptionString.lower(scid), $0)
                 }
         )
     }
@@ -992,12 +1004,13 @@ public class TrustDidWeb:
         })
     }
 
-    public static func deactivate(didTdw: String, didLog: String, keyPair: Ed25519KeyPair) -> TrustDidWeb {
+    public static func deactivate(didTdw: String, didLog: String, keyPair: Ed25519KeyPair, allowHttp: Bool?) -> TrustDidWeb {
         return TrustDidWeb(unsafeFromRawPointer: try! rustCall {
             uniffi_didtoolbox_fn_constructor_trustdidweb_deactivate(
                 FfiConverterString.lower(didTdw),
                 FfiConverterString.lower(didLog),
-                FfiConverterTypeEd25519KeyPair.lower(keyPair), $0
+                FfiConverterTypeEd25519KeyPair.lower(keyPair),
+                FfiConverterOptionBool.lower(allowHttp), $0
             )
         })
     }
@@ -1011,13 +1024,14 @@ public class TrustDidWeb:
         })
     }
 
-    public static func update(didTdw: String, didLog: String, didDoc: String, keyPair: Ed25519KeyPair) -> TrustDidWeb {
+    public static func update(didTdw: String, didLog: String, didDoc: String, keyPair: Ed25519KeyPair, allowHttp: Bool?) -> TrustDidWeb {
         return TrustDidWeb(unsafeFromRawPointer: try! rustCall {
             uniffi_didtoolbox_fn_constructor_trustdidweb_update(
                 FfiConverterString.lower(didTdw),
                 FfiConverterString.lower(didLog),
                 FfiConverterString.lower(didDoc),
-                FfiConverterTypeEd25519KeyPair.lower(keyPair), $0
+                FfiConverterTypeEd25519KeyPair.lower(keyPair),
+                FfiConverterOptionBool.lower(allowHttp), $0
             )
         })
     }
@@ -1220,25 +1234,40 @@ public func FfiConverterTypeTrustDidWebProcessor_lower(_ value: TrustDidWebProce
 }
 
 public struct Jwk {
-    public var kty: String
-    public var crv: String
-    public var x: String
+    public var alg: String?
+    public var kid: String?
+    public var kty: String?
+    public var crv: String?
+    public var x: String?
+    public var y: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
     public init(
-        kty: String,
-        crv: String,
-        x: String
+        alg: String?,
+        kid: String?,
+        kty: String?,
+        crv: String?,
+        x: String?,
+        y: String?
     ) {
+        self.alg = alg
+        self.kid = kid
         self.kty = kty
         self.crv = crv
         self.x = x
+        self.y = y
     }
 }
 
 extension Jwk: Equatable, Hashable {
     public static func == (lhs: Jwk, rhs: Jwk) -> Bool {
+        if lhs.alg != rhs.alg {
+            return false
+        }
+        if lhs.kid != rhs.kid {
+            return false
+        }
         if lhs.kty != rhs.kty {
             return false
         }
@@ -1248,13 +1277,19 @@ extension Jwk: Equatable, Hashable {
         if lhs.x != rhs.x {
             return false
         }
+        if lhs.y != rhs.y {
+            return false
+        }
         return true
     }
 
     public func hash(into hasher: inout Hasher) {
+        hasher.combine(alg)
+        hasher.combine(kid)
         hasher.combine(kty)
         hasher.combine(crv)
         hasher.combine(x)
+        hasher.combine(y)
     }
 }
 
@@ -1262,16 +1297,22 @@ public struct FfiConverterTypeJwk: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Jwk {
         return
             try Jwk(
-                kty: FfiConverterString.read(from: &buf),
-                crv: FfiConverterString.read(from: &buf),
-                x: FfiConverterString.read(from: &buf)
+                alg: FfiConverterOptionString.read(from: &buf),
+                kid: FfiConverterOptionString.read(from: &buf),
+                kty: FfiConverterOptionString.read(from: &buf),
+                crv: FfiConverterOptionString.read(from: &buf),
+                x: FfiConverterOptionString.read(from: &buf),
+                y: FfiConverterOptionString.read(from: &buf)
             )
     }
 
     public static func write(_ value: Jwk, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.kty, into: &buf)
-        FfiConverterString.write(value.crv, into: &buf)
-        FfiConverterString.write(value.x, into: &buf)
+        FfiConverterOptionString.write(value.alg, into: &buf)
+        FfiConverterOptionString.write(value.kid, into: &buf)
+        FfiConverterOptionString.write(value.kty, into: &buf)
+        FfiConverterOptionString.write(value.crv, into: &buf)
+        FfiConverterOptionString.write(value.x, into: &buf)
+        FfiConverterOptionString.write(value.y, into: &buf)
     }
 }
 
@@ -1518,6 +1559,9 @@ private var initializationResult: InitializationResult {
     if uniffi_didtoolbox_checksum_method_diddocumentstate_validate() != 4769 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_didtoolbox_checksum_method_diddocumentstate_validate_with_scid() != 46799 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_didtoolbox_checksum_method_ed25519keypair_get_signing_key() != 65401 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1581,13 +1625,13 @@ private var initializationResult: InitializationResult {
     if uniffi_didtoolbox_checksum_constructor_trustdidweb_create() != 52733 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_constructor_trustdidweb_deactivate() != 32104 {
+    if uniffi_didtoolbox_checksum_constructor_trustdidweb_deactivate() != 22064 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_didtoolbox_checksum_constructor_trustdidweb_read() != 26526 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_constructor_trustdidweb_update() != 28210 {
+    if uniffi_didtoolbox_checksum_constructor_trustdidweb_update() != 36262 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_didtoolbox_checksum_constructor_trustdidwebprocessor_new() != 14974 {
