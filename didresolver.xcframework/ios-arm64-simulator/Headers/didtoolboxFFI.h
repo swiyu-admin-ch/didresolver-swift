@@ -442,24 +442,9 @@ void*_Nonnull uniffi_didtoolbox_fn_clone_trustdidweb(void*_Nonnull ptr, RustCall
 void uniffi_didtoolbox_fn_free_trustdidweb(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
-#ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_CONSTRUCTOR_TRUSTDIDWEB_CREATE
-#define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_CONSTRUCTOR_TRUSTDIDWEB_CREATE
-void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidweb_create(RustBuffer url, void*_Nonnull key_pair, RustBuffer allow_http, RustCallStatus *_Nonnull out_status
-);
-#endif
-#ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_CONSTRUCTOR_TRUSTDIDWEB_DEACTIVATE
-#define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_CONSTRUCTOR_TRUSTDIDWEB_DEACTIVATE
-void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidweb_deactivate(RustBuffer did_tdw, RustBuffer did_log, void*_Nonnull key_pair, RustBuffer allow_http, RustCallStatus *_Nonnull out_status
-);
-#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_CONSTRUCTOR_TRUSTDIDWEB_READ
 #define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_CONSTRUCTOR_TRUSTDIDWEB_READ
 void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidweb_read(RustBuffer did_tdw, RustBuffer did_log, RustBuffer allow_http, RustCallStatus *_Nonnull out_status
-);
-#endif
-#ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_CONSTRUCTOR_TRUSTDIDWEB_UPDATE
-#define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_CONSTRUCTOR_TRUSTDIDWEB_UPDATE
-void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidweb_update(RustBuffer did_tdw, RustBuffer did_log, RustBuffer did_doc, void*_Nonnull key_pair, RustBuffer allow_http, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_METHOD_TRUSTDIDWEB_GET_DID
@@ -956,27 +941,9 @@ uint16_t uniffi_didtoolbox_checksum_constructor_ed25519verifyingkey_from_multiba
     
 );
 #endif
-#ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_CHECKSUM_CONSTRUCTOR_TRUSTDIDWEB_CREATE
-#define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_CHECKSUM_CONSTRUCTOR_TRUSTDIDWEB_CREATE
-uint16_t uniffi_didtoolbox_checksum_constructor_trustdidweb_create(void
-    
-);
-#endif
-#ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_CHECKSUM_CONSTRUCTOR_TRUSTDIDWEB_DEACTIVATE
-#define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_CHECKSUM_CONSTRUCTOR_TRUSTDIDWEB_DEACTIVATE
-uint16_t uniffi_didtoolbox_checksum_constructor_trustdidweb_deactivate(void
-    
-);
-#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_CHECKSUM_CONSTRUCTOR_TRUSTDIDWEB_READ
 #define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_CHECKSUM_CONSTRUCTOR_TRUSTDIDWEB_READ
 uint16_t uniffi_didtoolbox_checksum_constructor_trustdidweb_read(void
-    
-);
-#endif
-#ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_CHECKSUM_CONSTRUCTOR_TRUSTDIDWEB_UPDATE
-#define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_CHECKSUM_CONSTRUCTOR_TRUSTDIDWEB_UPDATE
-uint16_t uniffi_didtoolbox_checksum_constructor_trustdidweb_update(void
     
 );
 #endif

@@ -1304,44 +1304,11 @@ open class TrustDidWeb:
         try! rustCall { uniffi_didtoolbox_fn_free_trustdidweb(pointer, $0) }
     }
 
-    public static func create(url: String, keyPair: Ed25519KeyPair, allowHttp: Bool?) throws -> TrustDidWeb {
-        return try FfiConverterTypeTrustDidWeb.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
-            uniffi_didtoolbox_fn_constructor_trustdidweb_create(
-                FfiConverterString.lower(url),
-                FfiConverterTypeEd25519KeyPair.lower(keyPair),
-                FfiConverterOptionBool.lower(allowHttp), $0
-            )
-        })
-    }
-
-    public static func deactivate(didTdw: String, didLog: String, keyPair: Ed25519KeyPair, allowHttp: Bool?) throws -> TrustDidWeb {
-        return try FfiConverterTypeTrustDidWeb.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
-            uniffi_didtoolbox_fn_constructor_trustdidweb_deactivate(
-                FfiConverterString.lower(didTdw),
-                FfiConverterString.lower(didLog),
-                FfiConverterTypeEd25519KeyPair.lower(keyPair),
-                FfiConverterOptionBool.lower(allowHttp), $0
-            )
-        })
-    }
-
     public static func read(didTdw: String, didLog: String, allowHttp: Bool?) throws -> TrustDidWeb {
         return try FfiConverterTypeTrustDidWeb.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
             uniffi_didtoolbox_fn_constructor_trustdidweb_read(
                 FfiConverterString.lower(didTdw),
                 FfiConverterString.lower(didLog),
-                FfiConverterOptionBool.lower(allowHttp), $0
-            )
-        })
-    }
-
-    public static func update(didTdw: String, didLog: String, didDoc: String, keyPair: Ed25519KeyPair, allowHttp: Bool?) throws -> TrustDidWeb {
-        return try FfiConverterTypeTrustDidWeb.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
-            uniffi_didtoolbox_fn_constructor_trustdidweb_update(
-                FfiConverterString.lower(didTdw),
-                FfiConverterString.lower(didLog),
-                FfiConverterString.lower(didDoc),
-                FfiConverterTypeEd25519KeyPair.lower(keyPair),
                 FfiConverterOptionBool.lower(allowHttp), $0
             )
         })
@@ -1662,13 +1629,13 @@ public func FfiConverterTypeJwk_lower(_ value: Jwk) -> RustBuffer {
 public struct VerificationMethod {
     public var id: String
     public var controller: String
-    public var verificationType: String
+    public var verificationType: VerificationType
     public var publicKeyMultibase: String?
     public var publicKeyJwk: Jwk?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(id: String, controller: String, verificationType: String, publicKeyMultibase: String?, publicKeyJwk: Jwk?) {
+    public init(id: String, controller: String, verificationType: VerificationType, publicKeyMultibase: String?, publicKeyJwk: Jwk?) {
         self.id = id
         self.controller = controller
         self.verificationType = verificationType
@@ -1715,7 +1682,7 @@ public struct FfiConverterTypeVerificationMethod: FfiConverterRustBuffer {
             try VerificationMethod(
                 id: FfiConverterString.read(from: &buf),
                 controller: FfiConverterString.read(from: &buf),
-                verificationType: FfiConverterString.read(from: &buf),
+                verificationType: FfiConverterTypeVerificationType.read(from: &buf),
                 publicKeyMultibase: FfiConverterOptionString.read(from: &buf),
                 publicKeyJwk: FfiConverterOptionTypeJwk.read(from: &buf)
             )
@@ -1724,7 +1691,7 @@ public struct FfiConverterTypeVerificationMethod: FfiConverterRustBuffer {
     public static func write(_ value: VerificationMethod, into buf: inout [UInt8]) {
         FfiConverterString.write(value.id, into: &buf)
         FfiConverterString.write(value.controller, into: &buf)
-        FfiConverterString.write(value.verificationType, into: &buf)
+        FfiConverterTypeVerificationType.write(value.verificationType, into: &buf)
         FfiConverterOptionString.write(value.publicKeyMultibase, into: &buf)
         FfiConverterOptionTypeJwk.write(value.publicKeyJwk, into: &buf)
     }
@@ -1886,6 +1853,64 @@ extension TrustDidWebIdResolutionError: Foundation.LocalizedError {
         String(reflecting: self)
     }
 }
+
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum VerificationType {
+    case multikey
+    case jsonWebKey2020
+    case ed25519VerificationKey2020
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeVerificationType: FfiConverterRustBuffer {
+    typealias SwiftType = VerificationType
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> VerificationType {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .multikey
+
+        case 2: return .jsonWebKey2020
+
+        case 3: return .ed25519VerificationKey2020
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: VerificationType, into buf: inout [UInt8]) {
+        switch value {
+        case .multikey:
+            writeInt(&buf, Int32(1))
+
+        case .jsonWebKey2020:
+            writeInt(&buf, Int32(2))
+
+        case .ed25519VerificationKey2020:
+            writeInt(&buf, Int32(3))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVerificationType_lift(_ buf: RustBuffer) throws -> VerificationType {
+    return try FfiConverterTypeVerificationType.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeVerificationType_lower(_ value: VerificationType) -> RustBuffer {
+    return FfiConverterTypeVerificationType.lower(value)
+}
+
+extension VerificationType: Equatable, Hashable {}
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
@@ -2112,16 +2137,7 @@ private var initializationResult: InitializationResult = {
     if uniffi_didtoolbox_checksum_constructor_ed25519verifyingkey_from_multibase() != 60698 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_constructor_trustdidweb_create() != 28893 {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if uniffi_didtoolbox_checksum_constructor_trustdidweb_deactivate() != 64336 {
-        return InitializationResult.apiChecksumMismatch
-    }
     if uniffi_didtoolbox_checksum_constructor_trustdidweb_read() != 43492 {
-        return InitializationResult.apiChecksumMismatch
-    }
-    if uniffi_didtoolbox_checksum_constructor_trustdidweb_update() != 29247 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_didtoolbox_checksum_constructor_trustdidwebid_parse_did_tdw() != 39803 {
