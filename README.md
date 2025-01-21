@@ -4,7 +4,7 @@
 
 This project contains language bindings required for loading and using the [DID resolver](https://github.com/e-id-admin/didresolver) library in Swift applications.
 
-You are more then welcome to explore the relevant examples (→ will be published soon) in a further detail.
+You are more then welcome to explore the relevant [examples](https://github.com/e-id-admin/didresolver-examples) in a further detail.
 
 ## Contributions and feedback
 
