@@ -529,8 +529,8 @@ open class DidDoc:
         try! rustCall { uniffi_didtoolbox_fn_free_diddoc(pointer, $0) }
     }
 
-    public static func fromJson(jsonContent: String) -> DidDoc {
-        return try! FfiConverterTypeDidDoc.lift(try! rustCall {
+    public static func fromJson(jsonContent: String) throws -> DidDoc {
+        return try FfiConverterTypeDidDoc.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
             uniffi_didtoolbox_fn_constructor_diddoc_from_json(
                 FfiConverterString.lower(jsonContent), $0
             )
@@ -640,9 +640,9 @@ public func FfiConverterTypeDidDoc_lower(_ value: DidDoc) -> UnsafeMutableRawPoi
 }
 
 public protocol DidDocumentStateProtocol: AnyObject {
-    func validate() -> DidDoc
+    func validate() throws -> DidDoc
 
-    func validateWithScid(scid: String?) -> DidDoc
+    func validateWithScid(scid: String?) throws -> DidDoc
 }
 
 open class DidDocumentState:
@@ -694,22 +694,22 @@ open class DidDocumentState:
         try! rustCall { uniffi_didtoolbox_fn_free_diddocumentstate(pointer, $0) }
     }
 
-    public static func from(didLog: String) -> DidDocumentState {
-        return try! FfiConverterTypeDidDocumentState.lift(try! rustCall {
+    public static func from(didLog: String) throws -> DidDocumentState {
+        return try FfiConverterTypeDidDocumentState.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
             uniffi_didtoolbox_fn_constructor_diddocumentstate_from(
                 FfiConverterString.lower(didLog), $0
             )
         })
     }
 
-    open func validate() -> DidDoc {
-        return try! FfiConverterTypeDidDoc.lift(try! rustCall {
+    open func validate() throws -> DidDoc {
+        return try FfiConverterTypeDidDoc.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
             uniffi_didtoolbox_fn_method_diddocumentstate_validate(self.uniffiClonePointer(), $0)
         })
     }
 
-    open func validateWithScid(scid: String?) -> DidDoc {
-        return try! FfiConverterTypeDidDoc.lift(try! rustCall {
+    open func validateWithScid(scid: String?) throws -> DidDoc {
+        return try FfiConverterTypeDidDoc.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
             uniffi_didtoolbox_fn_method_diddocumentstate_validate_with_scid(self.uniffiClonePointer(),
                                                                             FfiConverterOptionString.lower(scid), $0)
         })
@@ -820,8 +820,8 @@ open class Ed25519KeyPair:
         try! rustCall { uniffi_didtoolbox_fn_free_ed25519keypair(pointer, $0) }
     }
 
-    public static func from(signingKeyMultibase: String) -> Ed25519KeyPair {
-        return try! FfiConverterTypeEd25519KeyPair.lift(try! rustCall {
+    public static func from(signingKeyMultibase: String) throws -> Ed25519KeyPair {
+        return try FfiConverterTypeEd25519KeyPair.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
             uniffi_didtoolbox_fn_constructor_ed25519keypair_from(
                 FfiConverterString.lower(signingKeyMultibase), $0
             )
@@ -955,8 +955,8 @@ open class Ed25519Signature:
         try! rustCall { uniffi_didtoolbox_fn_free_ed25519signature(pointer, $0) }
     }
 
-    public static func fromMultibase(multibase: String) -> Ed25519Signature {
-        return try! FfiConverterTypeEd25519Signature.lift(try! rustCall {
+    public static func fromMultibase(multibase: String) throws -> Ed25519Signature {
+        return try FfiConverterTypeEd25519Signature.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
             uniffi_didtoolbox_fn_constructor_ed25519signature_from_multibase(
                 FfiConverterString.lower(multibase), $0
             )
@@ -1070,8 +1070,8 @@ open class Ed25519SigningKey:
         try! rustCall { uniffi_didtoolbox_fn_free_ed25519signingkey(pointer, $0) }
     }
 
-    public static func fromMultibase(multibase: String) -> Ed25519SigningKey {
-        return try! FfiConverterTypeEd25519SigningKey.lift(try! rustCall {
+    public static func fromMultibase(multibase: String) throws -> Ed25519SigningKey {
+        return try FfiConverterTypeEd25519SigningKey.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
             uniffi_didtoolbox_fn_constructor_ed25519signingkey_from_multibase(
                 FfiConverterString.lower(multibase), $0
             )
@@ -1185,8 +1185,8 @@ open class Ed25519VerifyingKey:
         try! rustCall { uniffi_didtoolbox_fn_free_ed25519verifyingkey(pointer, $0) }
     }
 
-    public static func fromMultibase(multibase: String) -> Ed25519VerifyingKey {
-        return try! FfiConverterTypeEd25519VerifyingKey.lift(try! rustCall {
+    public static func fromMultibase(multibase: String) throws -> Ed25519VerifyingKey {
+        return try FfiConverterTypeEd25519VerifyingKey.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
             uniffi_didtoolbox_fn_constructor_ed25519verifyingkey_from_multibase(
                 FfiConverterString.lower(multibase), $0
             )
@@ -1727,7 +1727,7 @@ public enum TrustDidWebError {
     case InvalidMethodSpecificId(message: String)
 
     /**
-     * TODO Complete this docstring
+     * Failed to serialize DID document (to JSON).
      */
     case SerializationFailed(message: String)
 
@@ -1740,6 +1740,16 @@ public enum TrustDidWebError {
      * Invalid (or not yet supported) operation against DID doc.
      */
     case InvalidOperation(message: String)
+
+    /**
+     * Invalid DID document.
+     */
+    case InvalidDidDocument(message: String)
+
+    /**
+     * Invalid DID log integration proof.
+     */
+    case InvalidDataIntegrityProof(message: String)
 }
 
 #if swift(>=5.8)
@@ -1771,6 +1781,14 @@ public struct FfiConverterTypeTrustDidWebError: FfiConverterRustBuffer {
                 message: FfiConverterString.read(from: &buf)
             )
 
+        case 6: return try .InvalidDidDocument(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 7: return try .InvalidDataIntegrityProof(
+                message: FfiConverterString.read(from: &buf)
+            )
+
         default: throw UniffiInternalError.unexpectedEnumCase
         }
     }
@@ -1787,6 +1805,10 @@ public struct FfiConverterTypeTrustDidWebError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(4))
         case .InvalidOperation(_ /* message is ignored*/ ):
             writeInt(&buf, Int32(5))
+        case .InvalidDidDocument(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(6))
+        case .InvalidDataIntegrityProof(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(7))
         }
     }
 }
@@ -2077,10 +2099,10 @@ private var initializationResult: InitializationResult = {
     if uniffi_didtoolbox_checksum_method_diddoc_get_verification_method() != 46020 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_method_diddocumentstate_validate() != 4769 {
+    if uniffi_didtoolbox_checksum_method_diddocumentstate_validate() != 13040 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_method_diddocumentstate_validate_with_scid() != 46799 {
+    if uniffi_didtoolbox_checksum_method_diddocumentstate_validate_with_scid() != 12771 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_didtoolbox_checksum_method_ed25519keypair_get_signing_key() != 65401 {
@@ -2116,25 +2138,25 @@ private var initializationResult: InitializationResult = {
     if uniffi_didtoolbox_checksum_method_trustdidwebid_get_url() != 17624 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_constructor_diddoc_from_json() != 4545 {
+    if uniffi_didtoolbox_checksum_constructor_diddoc_from_json() != 11336 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_constructor_diddocumentstate_from() != 48250 {
+    if uniffi_didtoolbox_checksum_constructor_diddocumentstate_from() != 16384 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_constructor_ed25519keypair_from() != 61053 {
+    if uniffi_didtoolbox_checksum_constructor_ed25519keypair_from() != 7785 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_didtoolbox_checksum_constructor_ed25519keypair_generate() != 54771 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_constructor_ed25519signature_from_multibase() != 34889 {
+    if uniffi_didtoolbox_checksum_constructor_ed25519signature_from_multibase() != 26554 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_constructor_ed25519signingkey_from_multibase() != 44078 {
+    if uniffi_didtoolbox_checksum_constructor_ed25519signingkey_from_multibase() != 935 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_constructor_ed25519verifyingkey_from_multibase() != 60698 {
+    if uniffi_didtoolbox_checksum_constructor_ed25519verifyingkey_from_multibase() != 9783 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_didtoolbox_checksum_constructor_trustdidweb_read() != 43492 {
