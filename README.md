@@ -1,8 +1,8 @@
-![Public Beta banner](https://github.com/e-id-admin/eidch-public-beta/blob/main/assets/github-banner-publicbeta.jpg)
+![Public Beta banner](https://github.com/swiyu-admin-ch/swiyu-admin-ch.github.io/blob/main/assets/images/github-banner.jpg)
 
 # DID resolver for Swift applications
 
-This project contains language bindings required for loading and using the [DID resolver](https://github.com/e-id-admin/didresolver) library in Swift applications.
+This project contains language bindings required for loading and using the [DID resolver](https://github.com/swiyu-admin-ch/didresolver) library in Swift applications.
 
 You are more then welcome to explore the relevant examples (→ will be published soon) in a further detail.
 
