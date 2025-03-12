@@ -263,7 +263,7 @@ void uniffi_didresolver_fn_free_did(void*_Nonnull ptr, RustCallStatus *_Nonnull 
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_CONSTRUCTOR_DID_NEW
 #define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_CONSTRUCTOR_DID_NEW
-void*_Nonnull uniffi_didresolver_fn_constructor_did_new(RustBuffer text, RustCallStatus *_Nonnull out_status
+void*_Nonnull uniffi_didresolver_fn_constructor_did_new(RustBuffer did_tdw, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_METHOD_DID_GET_URL

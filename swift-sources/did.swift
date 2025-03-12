@@ -484,11 +484,11 @@ open class Did:
         return try! rustCall { uniffi_didresolver_fn_clone_did(self.pointer, $0) }
     }
 
-    public convenience init(text: String) {
+    public convenience init(didTdw: String) throws {
         let pointer =
-            try! rustCall {
+            try rustCallWithError(FfiConverterTypeDidResolveError.lift) {
                 uniffi_didresolver_fn_constructor_did_new(
-                    FfiConverterString.lower(text), $0
+                    FfiConverterString.lower(didTdw), $0
                 )
             }
         self.init(unsafeFromRawPointer: pointer)
@@ -641,7 +641,7 @@ private var initializationResult: InitializationResult = {
     if uniffi_didresolver_checksum_method_did_resolve() != 45277 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didresolver_checksum_constructor_did_new() != 23201 {
+    if uniffi_didresolver_checksum_constructor_did_new() != 41094 {
         return InitializationResult.apiChecksumMismatch
     }
 

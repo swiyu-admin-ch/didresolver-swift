@@ -444,7 +444,7 @@ void uniffi_didtoolbox_fn_free_trustdidweb(void*_Nonnull ptr, RustCallStatus *_N
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_CONSTRUCTOR_TRUSTDIDWEB_READ
 #define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_CONSTRUCTOR_TRUSTDIDWEB_READ
-void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidweb_read(RustBuffer did_tdw, RustBuffer did_log, RustBuffer allow_http, RustCallStatus *_Nonnull out_status
+void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidweb_read(RustBuffer did_tdw, RustBuffer did_log, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_METHOD_TRUSTDIDWEB_GET_DID
@@ -455,6 +455,11 @@ RustBuffer uniffi_didtoolbox_fn_method_trustdidweb_get_did(void*_Nonnull ptr, Ru
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_METHOD_TRUSTDIDWEB_GET_DID_DOC
 #define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_METHOD_TRUSTDIDWEB_GET_DID_DOC
 RustBuffer uniffi_didtoolbox_fn_method_trustdidweb_get_did_doc(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_METHOD_TRUSTDIDWEB_GET_DID_DOC_OBJ
+#define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_METHOD_TRUSTDIDWEB_GET_DID_DOC_OBJ
+void*_Nonnull uniffi_didtoolbox_fn_method_trustdidweb_get_did_doc_obj(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_METHOD_TRUSTDIDWEB_GET_DID_LOG
@@ -474,7 +479,7 @@ void uniffi_didtoolbox_fn_free_trustdidwebid(void*_Nonnull ptr, RustCallStatus *
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_CONSTRUCTOR_TRUSTDIDWEBID_PARSE_DID_TDW
 #define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_CONSTRUCTOR_TRUSTDIDWEBID_PARSE_DID_TDW
-void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidwebid_parse_did_tdw(RustBuffer did_tdw, RustBuffer allow_http, RustCallStatus *_Nonnull out_status
+void*_Nonnull uniffi_didtoolbox_fn_constructor_trustdidwebid_parse_did_tdw(RustBuffer did_tdw, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_FN_METHOD_TRUSTDIDWEBID_GET_SCID
@@ -878,6 +883,12 @@ uint16_t uniffi_didtoolbox_checksum_method_trustdidweb_get_did(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_CHECKSUM_METHOD_TRUSTDIDWEB_GET_DID_DOC
 #define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_CHECKSUM_METHOD_TRUSTDIDWEB_GET_DID_DOC
 uint16_t uniffi_didtoolbox_checksum_method_trustdidweb_get_did_doc(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_CHECKSUM_METHOD_TRUSTDIDWEB_GET_DID_DOC_OBJ
+#define UNIFFI_FFIDEF_UNIFFI_DIDTOOLBOX_CHECKSUM_METHOD_TRUSTDIDWEB_GET_DID_DOC_OBJ
+uint16_t uniffi_didtoolbox_checksum_method_trustdidweb_get_did_doc_obj(void
     
 );
 #endif

@@ -1252,6 +1252,8 @@ public protocol TrustDidWebProtocol: AnyObject {
 
     func getDidDoc() -> String
 
+    func getDidDocObj() throws -> DidDoc
+
     func getDidLog() -> String
 }
 
@@ -1304,12 +1306,11 @@ open class TrustDidWeb:
         try! rustCall { uniffi_didtoolbox_fn_free_trustdidweb(pointer, $0) }
     }
 
-    public static func read(didTdw: String, didLog: String, allowHttp: Bool?) throws -> TrustDidWeb {
+    public static func read(didTdw: String, didLog: String) throws -> TrustDidWeb {
         return try FfiConverterTypeTrustDidWeb.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
             uniffi_didtoolbox_fn_constructor_trustdidweb_read(
                 FfiConverterString.lower(didTdw),
-                FfiConverterString.lower(didLog),
-                FfiConverterOptionBool.lower(allowHttp), $0
+                FfiConverterString.lower(didLog), $0
             )
         })
     }
@@ -1323,6 +1324,12 @@ open class TrustDidWeb:
     open func getDidDoc() -> String {
         return try! FfiConverterString.lift(try! rustCall {
             uniffi_didtoolbox_fn_method_trustdidweb_get_did_doc(self.uniffiClonePointer(), $0)
+        })
+    }
+
+    open func getDidDocObj() throws -> DidDoc {
+        return try FfiConverterTypeDidDoc.lift(rustCallWithError(FfiConverterTypeTrustDidWebError.lift) {
+            uniffi_didtoolbox_fn_method_trustdidweb_get_did_doc_obj(self.uniffiClonePointer(), $0)
         })
     }
 
@@ -1458,11 +1465,10 @@ open class TrustDidWebId:
      *
      * CAUTION Calling any of the available getters should take place after this method is called, not earlier.
      */
-    public static func parseDidTdw(didTdw: String, allowHttp: Bool?) throws -> TrustDidWebId {
+    public static func parseDidTdw(didTdw: String) throws -> TrustDidWebId {
         return try FfiConverterTypeTrustDidWebId.lift(rustCallWithError(FfiConverterTypeTrustDidWebIdResolutionError.lift) {
             uniffi_didtoolbox_fn_constructor_trustdidwebid_parse_did_tdw(
-                FfiConverterString.lower(didTdw),
-                FfiConverterOptionBool.lower(allowHttp), $0
+                FfiConverterString.lower(didTdw), $0
             )
         })
     }
@@ -1742,6 +1748,11 @@ public enum TrustDidWebError {
     case InvalidOperation(message: String)
 
     /**
+     * Invalid DID parameter.
+     */
+    case InvalidDidParameter(message: String)
+
+    /**
      * Invalid DID document.
      */
     case InvalidDidDocument(message: String)
@@ -1781,11 +1792,15 @@ public struct FfiConverterTypeTrustDidWebError: FfiConverterRustBuffer {
                 message: FfiConverterString.read(from: &buf)
             )
 
-        case 6: return try .InvalidDidDocument(
+        case 6: return try .InvalidDidParameter(
                 message: FfiConverterString.read(from: &buf)
             )
 
-        case 7: return try .InvalidDataIntegrityProof(
+        case 7: return try .InvalidDidDocument(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 8: return try .InvalidDataIntegrityProof(
                 message: FfiConverterString.read(from: &buf)
             )
 
@@ -1805,10 +1820,12 @@ public struct FfiConverterTypeTrustDidWebError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(4))
         case .InvalidOperation(_ /* message is ignored*/ ):
             writeInt(&buf, Int32(5))
-        case .InvalidDidDocument(_ /* message is ignored*/ ):
+        case .InvalidDidParameter(_ /* message is ignored*/ ):
             writeInt(&buf, Int32(6))
-        case .InvalidDataIntegrityProof(_ /* message is ignored*/ ):
+        case .InvalidDidDocument(_ /* message is ignored*/ ):
             writeInt(&buf, Int32(7))
+        case .InvalidDataIntegrityProof(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(8))
         }
     }
 }
@@ -1933,30 +1950,6 @@ public func FfiConverterTypeVerificationType_lower(_ value: VerificationType) ->
 }
 
 extension VerificationType: Equatable, Hashable {}
-
-#if swift(>=5.8)
-    @_documentation(visibility: private)
-#endif
-private struct FfiConverterOptionBool: FfiConverterRustBuffer {
-    typealias SwiftType = Bool?
-
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
-        guard let value = value else {
-            writeInt(&buf, Int8(0))
-            return
-        }
-        writeInt(&buf, Int8(1))
-        FfiConverterBool.write(value, into: &buf)
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        switch try readInt(&buf) as Int8 {
-        case 0: return nil
-        case 1: return try FfiConverterBool.read(from: &buf)
-        default: throw UniffiInternalError.unexpectedOptionalTag
-        }
-    }
-}
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
@@ -2129,6 +2122,9 @@ private var initializationResult: InitializationResult = {
     if uniffi_didtoolbox_checksum_method_trustdidweb_get_did_doc() != 27888 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_didtoolbox_checksum_method_trustdidweb_get_did_doc_obj() != 44965 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_didtoolbox_checksum_method_trustdidweb_get_did_log() != 54432 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2159,10 +2155,10 @@ private var initializationResult: InitializationResult = {
     if uniffi_didtoolbox_checksum_constructor_ed25519verifyingkey_from_multibase() != 9783 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_constructor_trustdidweb_read() != 43492 {
+    if uniffi_didtoolbox_checksum_constructor_trustdidweb_read() != 32708 {
         return InitializationResult.apiChecksumMismatch
     }
-    if uniffi_didtoolbox_checksum_constructor_trustdidwebid_parse_did_tdw() != 39803 {
+    if uniffi_didtoolbox_checksum_constructor_trustdidwebid_parse_did_tdw() != 44898 {
         return InitializationResult.apiChecksumMismatch
     }
 
