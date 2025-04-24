@@ -8,7 +8,7 @@
 			<key>BinaryPath</key>
 			<string>libdidresolver.a</string>
 			<key>HeadersPath</key>
-			<string>Headers</string>
+			<string>Headers/didresolver</string>
 			<key>LibraryIdentifier</key>
 			<string>ios-arm64</string>
 			<key>LibraryPath</key>
@@ -24,7 +24,7 @@
 			<key>BinaryPath</key>
 			<string>libdidresolver.a</string>
 			<key>HeadersPath</key>
-			<string>Headers</string>
+			<string>Headers/didresolver</string>
 			<key>LibraryIdentifier</key>
 			<string>ios-arm64-simulator</string>
 			<key>LibraryPath</key>
