@@ -763,6 +763,155 @@ public func FfiConverterTypeDidDocumentState_lower(_ value: DidDocumentState) ->
     return FfiConverterTypeDidDocumentState.lower(value)
 }
 
+/**
+ * A compiled JSON Schema validator.
+ *
+ * This structure represents a JSON Schema that has been parsed and compiled into
+ * an efficient internal representation for validation. It contains the root node
+ * of the schema tree and the configuration options used during compilation.
+ */
+public protocol DidLogEntryValidatorProtocol: AnyObject {
+    /**
+     * Validate `instance` against `schema` and return the first error if any.
+     */
+    func validate(instance: String) throws
+}
+
+/**
+ * A compiled JSON Schema validator.
+ *
+ * This structure represents a JSON Schema that has been parsed and compiled into
+ * an efficient internal representation for validation. It contains the root node
+ * of the schema tree and the configuration options used during compilation.
+ */
+open class DidLogEntryValidator:
+    DidLogEntryValidatorProtocol
+{
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    public required init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public init(noPointer _: NoPointer) {
+        pointer = nil
+    }
+
+    #if swift(>=5.8)
+        @_documentation(visibility: private)
+    #endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_didtoolbox_fn_clone_didlogentryvalidator(self.pointer, $0) }
+    }
+
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_didtoolbox_fn_free_didlogentryvalidator(pointer, $0) }
+    }
+
+    /**
+     * Create a new JSON Schema validator using `JSON Schema Draft 2020-12` specifications and default options.
+     * The schema used is DidLogEntryJsonSchema::V03.
+     */
+    public static func `default`() -> DidLogEntryValidator {
+        return try! FfiConverterTypeDidLogEntryValidator.lift(try! rustCall {
+            uniffi_didtoolbox_fn_constructor_didlogentryvalidator_default($0
+            )
+        })
+    }
+
+    /**
+     * Create a new JSON Schema validator using `JSON Schema Draft 2020-12` specifications and supplied schema.
+     */
+    public static func from(ver: DidLogEntryJsonSchema) -> DidLogEntryValidator {
+        return try! FfiConverterTypeDidLogEntryValidator.lift(try! rustCall {
+            uniffi_didtoolbox_fn_constructor_didlogentryvalidator_from(
+                FfiConverterTypeDidLogEntryJsonSchema.lower(ver), $0
+            )
+        })
+    }
+
+    /**
+     * Validate `instance` against `schema` and return the first error if any.
+     */
+    open func validate(instance: String) throws { try rustCallWithError(FfiConverterTypeDidLogEntryValidatorError.lift) {
+        uniffi_didtoolbox_fn_method_didlogentryvalidator_validate(self.uniffiClonePointer(),
+                                                                  FfiConverterString.lower(instance), $0)
+    }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDidLogEntryValidator: FfiConverter {
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = DidLogEntryValidator
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> DidLogEntryValidator {
+        return DidLogEntryValidator(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: DidLogEntryValidator) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DidLogEntryValidator {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if ptr == nil {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: DidLogEntryValidator, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDidLogEntryValidator_lift(_ pointer: UnsafeMutableRawPointer) throws -> DidLogEntryValidator {
+    return try FfiConverterTypeDidLogEntryValidator.lift(pointer)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDidLogEntryValidator_lower(_ value: DidLogEntryValidator) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeDidLogEntryValidator.lower(value)
+}
+
 public protocol Ed25519KeyPairProtocol: AnyObject {
     func getSigningKey() -> Ed25519SigningKey
 
@@ -1717,6 +1866,125 @@ public func FfiConverterTypeVerificationMethod_lower(_ value: VerificationMethod
     return FfiConverterTypeVerificationMethod.lower(value)
 }
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+/**
+ * W.r.t. corresponding specification version available at https://identity.foundation/didwebvh
+ *
+ * # CAUTION The single currently supported `didwebvh` specification version is: v0.3
+ */
+
+public enum DidLogEntryJsonSchema {
+    /**
+     * As defined by https://identity.foundation/didwebvh/v0.3 but w.r.t. (eID-conformity) addendum:
+     * - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Log+Conformity+Check
+     * - https://confluence.bit.admin.ch/display/EIDTEAM/DID+Doc+Conformity+Check
+     */
+    case v03EidConform
+    /**
+     * As (strictly) specified by https://identity.foundation/didwebvh/v0.3
+     */
+    case v03
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDidLogEntryJsonSchema: FfiConverterRustBuffer {
+    typealias SwiftType = DidLogEntryJsonSchema
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DidLogEntryJsonSchema {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return .v03EidConform
+
+        case 2: return .v03
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DidLogEntryJsonSchema, into buf: inout [UInt8]) {
+        switch value {
+        case .v03EidConform:
+            writeInt(&buf, Int32(1))
+
+        case .v03:
+            writeInt(&buf, Int32(2))
+        }
+    }
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDidLogEntryJsonSchema_lift(_ buf: RustBuffer) throws -> DidLogEntryJsonSchema {
+    return try FfiConverterTypeDidLogEntryJsonSchema.lift(buf)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDidLogEntryJsonSchema_lower(_ value: DidLogEntryJsonSchema) -> RustBuffer {
+    return FfiConverterTypeDidLogEntryJsonSchema.lower(value)
+}
+
+extension DidLogEntryJsonSchema: Equatable, Hashable {}
+
+/**
+ * Represents any error condition that might occur in conjunction with `DidLogEntryValidator`
+ */
+public enum DidLogEntryValidatorError {
+    /**
+     * The supplied JSON instance is not a valid DID log.
+     */
+    case ValidationError(message: String)
+
+    /**
+     * The supplied JSON instance cannot be deserialized.
+     */
+    case DeserializationError(message: String)
+}
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDidLogEntryValidatorError: FfiConverterRustBuffer {
+    typealias SwiftType = DidLogEntryValidatorError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DidLogEntryValidatorError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        case 1: return try .ValidationError(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        case 2: return try .DeserializationError(
+                message: FfiConverterString.read(from: &buf)
+            )
+
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: DidLogEntryValidatorError, into buf: inout [UInt8]) {
+        switch value {
+        case .ValidationError(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(1))
+        case .DeserializationError(_ /* message is ignored*/ ):
+            writeInt(&buf, Int32(2))
+        }
+    }
+}
+
+extension DidLogEntryValidatorError: Equatable, Hashable {}
+
+extension DidLogEntryValidatorError: Foundation.LocalizedError {
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+}
+
 /**
  * The error accompanying TrustDidWeb.
  * It might occur while calling TrustDidWeb methods.
@@ -2098,6 +2366,9 @@ private var initializationResult: InitializationResult = {
     if uniffi_didtoolbox_checksum_method_diddocumentstate_validate_with_scid() != 12771 {
         return InitializationResult.apiChecksumMismatch
     }
+    if uniffi_didtoolbox_checksum_method_didlogentryvalidator_validate() != 20662 {
+        return InitializationResult.apiChecksumMismatch
+    }
     if uniffi_didtoolbox_checksum_method_ed25519keypair_get_signing_key() != 65401 {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2138,6 +2409,12 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_didtoolbox_checksum_constructor_diddocumentstate_from() != 16384 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_didtoolbox_checksum_constructor_didlogentryvalidator_default() != 58583 {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if uniffi_didtoolbox_checksum_constructor_didlogentryvalidator_from() != 46445 {
         return InitializationResult.apiChecksumMismatch
     }
     if uniffi_didtoolbox_checksum_constructor_ed25519keypair_from() != 7785 {
