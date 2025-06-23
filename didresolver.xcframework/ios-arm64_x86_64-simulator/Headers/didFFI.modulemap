@@ -1,0 +1,4 @@
+module didFFI {
+    header "didFFI.h"
+    export *
+}

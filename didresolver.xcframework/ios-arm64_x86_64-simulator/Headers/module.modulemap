@@ -1,0 +1,7 @@
+module didtoolboxFFI {
+    header "didtoolboxFFI.h"
+    export *
+}module didFFI {
+    header "didFFI.h"
+    export *
+}
