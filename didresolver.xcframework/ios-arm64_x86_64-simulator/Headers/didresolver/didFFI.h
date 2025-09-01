@@ -263,7 +263,22 @@ void uniffi_didresolver_fn_free_did(void*_Nonnull ptr, RustCallStatus *_Nonnull 
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_CONSTRUCTOR_DID_NEW
 #define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_CONSTRUCTOR_DID_NEW
-void*_Nonnull uniffi_didresolver_fn_constructor_did_new(RustBuffer did_tdw, RustCallStatus *_Nonnull out_status
+void*_Nonnull uniffi_didresolver_fn_constructor_did_new(RustBuffer did, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_METHOD_DID_GET_HTTPS_URL
+#define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_METHOD_DID_GET_HTTPS_URL
+RustBuffer uniffi_didresolver_fn_method_did_get_https_url(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_METHOD_DID_GET_METHOD
+#define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_METHOD_DID_GET_METHOD
+RustBuffer uniffi_didresolver_fn_method_did_get_method(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_METHOD_DID_GET_SCID
+#define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_METHOD_DID_GET_SCID
+RustBuffer uniffi_didresolver_fn_method_did_get_scid(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_METHOD_DID_GET_URL
@@ -273,7 +288,12 @@ RustBuffer uniffi_didresolver_fn_method_did_get_url(void*_Nonnull ptr, RustCallS
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_METHOD_DID_RESOLVE
 #define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_METHOD_DID_RESOLVE
-void*_Nonnull uniffi_didresolver_fn_method_did_resolve(void*_Nonnull ptr, RustBuffer did_tdw_log, RustCallStatus *_Nonnull out_status
+void*_Nonnull uniffi_didresolver_fn_method_did_resolve(void*_Nonnull ptr, RustBuffer did_log, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_METHOD_DID_RESOLVE_ALL
+#define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_FN_METHOD_DID_RESOLVE_ALL
+void*_Nonnull uniffi_didresolver_fn_method_did_resolve_all(void*_Nonnull ptr, RustBuffer did_log, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_FFI_DIDRESOLVER_RUSTBUFFER_ALLOC
@@ -556,6 +576,24 @@ void ffi_didresolver_rust_future_free_void(uint64_t handle
 void ffi_didresolver_rust_future_complete_void(uint64_t handle, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_CHECKSUM_METHOD_DID_GET_HTTPS_URL
+#define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_CHECKSUM_METHOD_DID_GET_HTTPS_URL
+uint16_t uniffi_didresolver_checksum_method_did_get_https_url(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_CHECKSUM_METHOD_DID_GET_METHOD
+#define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_CHECKSUM_METHOD_DID_GET_METHOD
+uint16_t uniffi_didresolver_checksum_method_did_get_method(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_CHECKSUM_METHOD_DID_GET_SCID
+#define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_CHECKSUM_METHOD_DID_GET_SCID
+uint16_t uniffi_didresolver_checksum_method_did_get_scid(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_CHECKSUM_METHOD_DID_GET_URL
 #define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_CHECKSUM_METHOD_DID_GET_URL
 uint16_t uniffi_didresolver_checksum_method_did_get_url(void
@@ -565,6 +603,12 @@ uint16_t uniffi_didresolver_checksum_method_did_get_url(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_CHECKSUM_METHOD_DID_RESOLVE
 #define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_CHECKSUM_METHOD_DID_RESOLVE
 uint16_t uniffi_didresolver_checksum_method_did_resolve(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_CHECKSUM_METHOD_DID_RESOLVE_ALL
+#define UNIFFI_FFIDEF_UNIFFI_DIDRESOLVER_CHECKSUM_METHOD_DID_RESOLVE_ALL
+uint16_t uniffi_didresolver_checksum_method_did_resolve_all(void
     
 );
 #endif

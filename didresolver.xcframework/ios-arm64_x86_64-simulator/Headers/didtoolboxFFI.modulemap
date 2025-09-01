@@ -1,4 +1,0 @@
-module didtoolboxFFI {
-    header "didtoolboxFFI.h"
-    export *
-}
