@@ -531,6 +531,16 @@ public protocol DidDocProtocol: AnyObject, Sendable {
     
     func getId()  -> String
     
+    /**
+     * Returns a cryptographic public key (`Jwk`) referenced by the supplied `key_id`, if any.
+     * The key lookup is always done across all verification methods (`verificationMethod`) and
+     * verification relationships
+     * (`authentication`, `assertionMethod`, `keyAgreement`, `capabilityInvocation`, `capabilityInvocation`).
+     *
+     * If no such key exists, `DidSidekicksError::KeyNotFound` is returned.
+     */
+    func getKey(keyId: String) throws  -> Jwk
+    
     func getVerificationMethod()  -> [VerificationMethod]
     
 }
@@ -646,6 +656,22 @@ open func getDeactivated() -> Bool  {
 open func getId() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
     uniffi_did_sidekicks_fn_method_diddoc_get_id(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Returns a cryptographic public key (`Jwk`) referenced by the supplied `key_id`, if any.
+     * The key lookup is always done across all verification methods (`verificationMethod`) and
+     * verification relationships
+     * (`authentication`, `assertionMethod`, `keyAgreement`, `capabilityInvocation`, `capabilityInvocation`).
+     *
+     * If no such key exists, `DidSidekicksError::KeyNotFound` is returned.
+     */
+open func getKey(keyId: String)throws  -> Jwk  {
+    return try  FfiConverterTypeJwk_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_diddoc_get_key(self.uniffiClonePointer(),
+        FfiConverterString.lower(keyId),$0
     )
 })
 }
@@ -1918,7 +1944,7 @@ public enum DidSidekicksError: Swift.Error {
     case SerializationFailed(message: String)
     
     /**
-     * The supplied did doc is invalid or contains an argument which isn't part of the did specification/recommendation.
+     * The supplied DID document is invalid or contains an argument which isn't part of the did specification/recommendation.
      */
     case DeserializationFailed(message: String)
     
@@ -1933,9 +1959,19 @@ public enum DidSidekicksError: Swift.Error {
     case InvalidDataIntegrityProof(message: String)
     
     /**
-     * Invalid DID method parameter
+     * Invalid DID method parameter.
      */
     case InvalidDidMethodParameter(message: String)
+    
+    /**
+     * No such JWK in the DID document.
+     */
+    case KeyNotFound(message: String)
+    
+    /**
+     * Non-existing key referenced in the DID document.
+     */
+    case NonExistingKeyReferenced(message: String)
     
 }
 
@@ -1973,6 +2009,14 @@ public struct FfiConverterTypeDidSidekicksError: FfiConverterRustBuffer {
             message: try FfiConverterString.read(from: &buf)
         )
         
+        case 6: return .KeyNotFound(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 7: return .NonExistingKeyReferenced(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
 
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -1994,6 +2038,10 @@ public struct FfiConverterTypeDidSidekicksError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(4))
         case .InvalidDidMethodParameter(_ /* message is ignored*/):
             writeInt(&buf, Int32(5))
+        case .KeyNotFound(_ /* message is ignored*/):
+            writeInt(&buf, Int32(6))
+        case .NonExistingKeyReferenced(_ /* message is ignored*/):
+            writeInt(&buf, Int32(7))
 
         
         }
@@ -2350,6 +2398,25 @@ fileprivate struct FfiConverterDictionaryStringTypeDidMethodParameter: FfiConver
         return dict
     }
 }
+/**
+ * The helper parses the supplied DID doc as string and returns a cryptographic public key (`Jwk`) referenced by the supplied `key_id`, if any.
+ *
+ * Parsing failure is denoted by returning `DidSidekicksError::DeserializationFailed`.
+ *
+ * The key lookup is always done across all verification methods (`verificationMethod`) and
+ * verification relationships
+ * (`authentication`, `assertionMethod`, `keyAgreement`, `capabilityInvocation`, `capabilityInvocation`).
+ *
+ * If no such key exists, `DidSidekicksError::KeyNotFound` is returned.
+ */
+public func getKeyFromDidDoc(didDoc: String, keyId: String)throws  -> Jwk  {
+    return try  FfiConverterTypeJwk_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_func_get_key_from_did_doc(
+        FfiConverterString.lower(didDoc),
+        FfiConverterString.lower(keyId),$0
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -2365,6 +2432,9 @@ private let initializationResult: InitializationResult = {
     let scaffolding_contract_version = ffi_did_sidekicks_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_func_get_key_from_did_doc() != 6953) {
+        return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_diddoc_get_assertion_method() != 15810) {
         return InitializationResult.apiChecksumMismatch
@@ -2388,6 +2458,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_diddoc_get_id() != 6137) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_key() != 61960) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_diddoc_get_verification_method() != 62805) {

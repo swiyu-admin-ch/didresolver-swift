@@ -1,8 +1,11 @@
 // swift-tools-version:5.3
 import PackageDescription
 
-let version = "2.2.0"
-let checksum = "47cf4689b768411675e63f3cd5196c1dc71fa7b7755357da74df2f356b653cb1"
+let version = "2.3.0"
+let xcframework_name = "didresolver"
+let binary_target_url_github_owner = "swiyu-admin-ch"
+let binary_target_url_github_repo = "didresolver-swift"
+let checksum = "77c972c27d2cb5a5c7ec9997ae543c21014c56fd81551c8941026376ac380a7a"
 
 let package = Package(
     name: "DidResolver",
@@ -21,7 +24,7 @@ let package = Package(
         ),
         .binaryTarget(
             name: "DidResolverRemoteBinaryPackage",
-            url: "https://github.com/swiyu-admin-ch/didresolver-swift/releases/download/\(version)/didresolver-\(version).xcframework.zip",
+            url: "https://github.com/\(binary_target_url_github_owner)/\(binary_target_url_github_repo)/releases/download/\(version)/\(xcframework_name)-\(version).xcframework.zip",
             checksum: "\(checksum)"
         )
     ]
