@@ -543,6 +543,11 @@ public protocol DidDocProtocol: AnyObject, Sendable {
     
     func getVerificationMethod()  -> [VerificationMethod]
     
+    /**
+     * Serializes this `DidDoc` object as a `String` of JSON.
+     */
+    func toJson() throws  -> String
+    
 }
 open class DidDoc: DidDocProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
@@ -594,6 +599,10 @@ open class DidDoc: DidDocProtocol, @unchecked Sendable {
     }
 
     
+    /**
+     * The deserialization-based constructor.
+     * It attempts to deserialize an instance of type `DidDoc` from a string of JSON text.
+     */
 public static func fromJson(jsonContent: String)throws  -> DidDoc  {
     return try  FfiConverterTypeDidDoc_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
     uniffi_did_sidekicks_fn_constructor_diddoc_from_json(
@@ -679,6 +688,16 @@ open func getKey(keyId: String)throws  -> Jwk  {
 open func getVerificationMethod() -> [VerificationMethod]  {
     return try!  FfiConverterSequenceTypeVerificationMethod.lift(try! rustCall() {
     uniffi_did_sidekicks_fn_method_diddoc_get_verification_method(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Serializes this `DidDoc` object as a `String` of JSON.
+     */
+open func toJson()throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_diddoc_to_json(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -2464,6 +2483,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_diddoc_get_verification_method() != 62805) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_diddoc_to_json() != 51838) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_diddocextended_get_did_doc() != 63079) {
