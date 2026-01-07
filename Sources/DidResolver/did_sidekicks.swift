@@ -513,6 +513,292 @@ fileprivate struct FfiConverterString: FfiConverter {
 
 
 
+public protocol CryptoSuiteProofOptionsProtocol: AnyObject, Sendable {
+    
+}
+open class CryptoSuiteProofOptions: CryptoSuiteProofOptionsProtocol, @unchecked Sendable {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_did_sidekicks_fn_clone_cryptosuiteproofoptions(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_did_sidekicks_fn_free_cryptosuiteproofoptions(pointer, $0) }
+    }
+
+    
+    /**
+     * The default constructor aligned with the `eddsa-jcs-2022` suite (https://www.w3.org/TR/vc-di-eddsa/#proof-configuration-eddsa-jcs-2022), hence:
+     *
+     * - `proof_type: "DataIntegrityProof"`
+     *
+     * - `crypto_suite: "eddsa-jcs-2022"`
+     *
+     * - `created: <current datetime>`
+     *
+     * - `proof_purpose: "authentication"`
+     */
+public static func `default`() -> CryptoSuiteProofOptions  {
+    return try!  FfiConverterTypeCryptoSuiteProofOptions_lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_constructor_cryptosuiteproofoptions_default($0
+    )
+})
+}
+    
+    /**
+     * The super-potent non-empty constructor.
+     *
+     * As nearly all arguments are optional - see the default constructor for default values.
+     */
+public static func newEddsaJcs2022(createdDtRfc3339: String?, verificationMethod: String, proofPurpose: String?, context: [String]?, challenge: String?)throws  -> CryptoSuiteProofOptions  {
+    return try  FfiConverterTypeCryptoSuiteProofOptions_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_constructor_cryptosuiteproofoptions_new_eddsa_jcs_2022(
+        FfiConverterOptionString.lower(createdDtRfc3339),
+        FfiConverterString.lower(verificationMethod),
+        FfiConverterOptionString.lower(proofPurpose),
+        FfiConverterOptionSequenceString.lower(context),
+        FfiConverterOptionString.lower(challenge),$0
+    )
+})
+}
+    
+
+    
+
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCryptoSuiteProofOptions: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = CryptoSuiteProofOptions
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> CryptoSuiteProofOptions {
+        return CryptoSuiteProofOptions(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: CryptoSuiteProofOptions) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CryptoSuiteProofOptions {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: CryptoSuiteProofOptions, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCryptoSuiteProofOptions_lift(_ pointer: UnsafeMutableRawPointer) throws -> CryptoSuiteProofOptions {
+    return try FfiConverterTypeCryptoSuiteProofOptions.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCryptoSuiteProofOptions_lower(_ value: CryptoSuiteProofOptions) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeCryptoSuiteProofOptions.lower(value)
+}
+
+
+
+
+
+
+/**
+ * Represents a general design pattern, a cryptographic suite type called a `DataIntegrityProof`,
+ * which reduces the burden of writing and implementing cryptographic suites through the reuse of design primitives and source code,
+ * as specified by https://www.w3.org/TR/vc-data-integrity/#dataintegrityproof
+ *
+ * For EdDSA Cryptosuites v1.0 suites, see https://www.w3.org/TR/vc-di-eddsa/#dataintegrityproof
+ */
+public protocol DataIntegrityProofProtocol: AnyObject, Sendable {
+    
+}
+/**
+ * Represents a general design pattern, a cryptographic suite type called a `DataIntegrityProof`,
+ * which reduces the burden of writing and implementing cryptographic suites through the reuse of design primitives and source code,
+ * as specified by https://www.w3.org/TR/vc-data-integrity/#dataintegrityproof
+ *
+ * For EdDSA Cryptosuites v1.0 suites, see https://www.w3.org/TR/vc-di-eddsa/#dataintegrityproof
+ */
+open class DataIntegrityProof: DataIntegrityProofProtocol, @unchecked Sendable {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_did_sidekicks_fn_clone_dataintegrityproof(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_did_sidekicks_fn_free_dataintegrityproof(pointer, $0) }
+    }
+
+    
+    /**
+     * The non-empty parsing constructor featuring validation in terms of supported type/proofPurpose/cryptosuite
+     */
+public static func fromJsonString(json: String)throws  -> DataIntegrityProof  {
+    return try  FfiConverterTypeDataIntegrityProof_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_constructor_dataintegrityproof_from_json_string(
+        FfiConverterString.lower(json),$0
+    )
+})
+}
+    
+
+    
+
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDataIntegrityProof: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = DataIntegrityProof
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> DataIntegrityProof {
+        return DataIntegrityProof(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: DataIntegrityProof) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DataIntegrityProof {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: DataIntegrityProof, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDataIntegrityProof_lift(_ pointer: UnsafeMutableRawPointer) throws -> DataIntegrityProof {
+    return try FfiConverterTypeDataIntegrityProof.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDataIntegrityProof_lower(_ value: DataIntegrityProof) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeDataIntegrityProof.lower(value)
+}
+
+
+
+
+
+
 public protocol DidDocProtocol: AnyObject, Sendable {
     
     func getAssertionMethod()  -> [VerificationMethod]
@@ -1523,6 +1809,1016 @@ public func FfiConverterTypeDidMethodParameter_lower(_ value: DidMethodParameter
 
 
 
+
+
+/**
+ * The type represents a container for the byte serialization of an Ed25519
+ * signature, and does not necessarily represent well-formed field or curve
+ * elements.
+ *
+ * Furthermore, the type supports (de)serialization w.r.t `Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
+ */
+public protocol Ed25519SignatureProtocol: AnyObject, Sendable {
+    
+    /**
+     * The multibase-encoding method.
+     */
+    func toMultibase()  -> String
+    
+}
+/**
+ * The type represents a container for the byte serialization of an Ed25519
+ * signature, and does not necessarily represent well-formed field or curve
+ * elements.
+ *
+ * Furthermore, the type supports (de)serialization w.r.t `Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
+ */
+open class Ed25519Signature: Ed25519SignatureProtocol, @unchecked Sendable {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_did_sidekicks_fn_clone_ed25519signature(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_did_sidekicks_fn_free_ed25519signature(pointer, $0) }
+    }
+
+    
+    /**
+     * The type constructor from a multibase-encoded value.
+     */
+public static func fromMultibase(multibase: String)throws  -> Ed25519Signature  {
+    return try  FfiConverterTypeEd25519Signature_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_constructor_ed25519signature_from_multibase(
+        FfiConverterString.lower(multibase),$0
+    )
+})
+}
+    
+
+    
+    /**
+     * The multibase-encoding method.
+     */
+open func toMultibase() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_method_ed25519signature_to_multibase(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEd25519Signature: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Ed25519Signature
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Ed25519Signature {
+        return Ed25519Signature(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Ed25519Signature) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Ed25519Signature {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Ed25519Signature, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEd25519Signature_lift(_ pointer: UnsafeMutableRawPointer) throws -> Ed25519Signature {
+    return try FfiConverterTypeEd25519Signature.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEd25519Signature_lower(_ value: Ed25519Signature) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeEd25519Signature.lower(value)
+}
+
+
+
+
+
+
+/**
+ * The type represents Ed25519 secret key as defined in `RFC8032 § 5.1.5` (https://www.rfc-editor.org/rfc/rfc8032#section-5.1.5):
+ *
+ * > The private key is 32 octets (256 bits, corresponding to b) of
+ * > cryptographically secure random data.
+ *
+ * Furthermore, the type supports (de)serialization w.r.t `Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
+ */
+public protocol Ed25519SigningKeyProtocol: AnyObject, Sendable {
+    
+    /**
+     * Get the `Ed25519VerifyingKey` for this `Ed25519SigningKey`.
+     */
+    func getVerifyingKey()  -> Ed25519VerifyingKey
+    
+    /**
+     * Sign the given message and return a digital signature.
+     */
+    func sign(message: String)  -> Ed25519Signature
+    
+    /**
+     * The multibase-encoding method, as specified by `Multikey` (https://www.w3.org/TR/controller-document/#Multikey):
+     *
+     * The encoding of an Ed25519 secret key MUST start with the two-byte prefix 0x8026 (the varint expression of 0x1300),
+     * followed by the 32-byte secret key data. The resulting 34-byte value MUST then be encoded using the base-58-btc alphabet,
+     * and then prepended with the base-58-btc Multibase header (z).
+     */
+    func toMultibase()  -> String
+    
+    /**
+     * Write ASN.1 DER-encoded PKCS#8 private key to the given path.
+     */
+    func writePkcs8PemFile(pkcs8PemFile: String) throws 
+    
+}
+/**
+ * The type represents Ed25519 secret key as defined in `RFC8032 § 5.1.5` (https://www.rfc-editor.org/rfc/rfc8032#section-5.1.5):
+ *
+ * > The private key is 32 octets (256 bits, corresponding to b) of
+ * > cryptographically secure random data.
+ *
+ * Furthermore, the type supports (de)serialization w.r.t `Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
+ */
+open class Ed25519SigningKey: Ed25519SigningKeyProtocol, @unchecked Sendable {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_did_sidekicks_fn_clone_ed25519signingkey(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_did_sidekicks_fn_free_ed25519signingkey(pointer, $0) }
+    }
+
+    
+    /**
+     * The type constructor from a multibase-encoded value, as specified by `Multikey` (https://www.w3.org/TR/controller-document/#Multikey):
+     *
+     * The encoding of an Ed25519 secret key MUST start with the two-byte prefix 0x8026 (the varint expression of 0x1300),
+     * followed by the 32-byte secret key data. The resulting 34-byte value MUST then be encoded using the base-58-btc alphabet,
+     * and then prepended with the base-58-btc Multibase header (z).
+     */
+public static func fromMultibase(multibase: String)throws  -> Ed25519SigningKey  {
+    return try  FfiConverterTypeEd25519SigningKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_constructor_ed25519signingkey_from_multibase(
+        FfiConverterString.lower(multibase),$0
+    )
+})
+}
+    
+    /**
+     * Deserialize PKCS#8-encoded private key from PEM.
+     */
+public static func fromPkcs8Pem(pkcs8Pem: String)throws  -> Ed25519SigningKey  {
+    return try  FfiConverterTypeEd25519SigningKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_constructor_ed25519signingkey_from_pkcs8_pem(
+        FfiConverterString.lower(pkcs8Pem),$0
+    )
+})
+}
+    
+    /**
+     * Generate an Ed25519 signing key as defined in [RFC8032 § 5.1.5].
+     *
+     * [RFC8032 § 5.1.5]: https://www.rfc-editor.org/rfc/rfc8032#section-5.1.5
+     */
+public static func generate() -> Ed25519SigningKey  {
+    return try!  FfiConverterTypeEd25519SigningKey_lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_constructor_ed25519signingkey_generate($0
+    )
+})
+}
+    
+    /**
+     * Load public key object from a PEM-encoded file on the local filesystem.
+     */
+public static func readPkcs8PemFile(pkcs8PemFile: String)throws  -> Ed25519SigningKey  {
+    return try  FfiConverterTypeEd25519SigningKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_constructor_ed25519signingkey_read_pkcs8_pem_file(
+        FfiConverterString.lower(pkcs8PemFile),$0
+    )
+})
+}
+    
+
+    
+    /**
+     * Get the `Ed25519VerifyingKey` for this `Ed25519SigningKey`.
+     */
+open func getVerifyingKey() -> Ed25519VerifyingKey  {
+    return try!  FfiConverterTypeEd25519VerifyingKey_lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_method_ed25519signingkey_get_verifying_key(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Sign the given message and return a digital signature.
+     */
+open func sign(message: String) -> Ed25519Signature  {
+    return try!  FfiConverterTypeEd25519Signature_lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_method_ed25519signingkey_sign(self.uniffiClonePointer(),
+        FfiConverterString.lower(message),$0
+    )
+})
+}
+    
+    /**
+     * The multibase-encoding method, as specified by `Multikey` (https://www.w3.org/TR/controller-document/#Multikey):
+     *
+     * The encoding of an Ed25519 secret key MUST start with the two-byte prefix 0x8026 (the varint expression of 0x1300),
+     * followed by the 32-byte secret key data. The resulting 34-byte value MUST then be encoded using the base-58-btc alphabet,
+     * and then prepended with the base-58-btc Multibase header (z).
+     */
+open func toMultibase() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_method_ed25519signingkey_to_multibase(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Write ASN.1 DER-encoded PKCS#8 private key to the given path.
+     */
+open func writePkcs8PemFile(pkcs8PemFile: String)throws   {try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_ed25519signingkey_write_pkcs8_pem_file(self.uniffiClonePointer(),
+        FfiConverterString.lower(pkcs8PemFile),$0
+    )
+}
+}
+    
+
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEd25519SigningKey: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Ed25519SigningKey
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Ed25519SigningKey {
+        return Ed25519SigningKey(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Ed25519SigningKey) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Ed25519SigningKey {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Ed25519SigningKey, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEd25519SigningKey_lift(_ pointer: UnsafeMutableRawPointer) throws -> Ed25519SigningKey {
+    return try FfiConverterTypeEd25519SigningKey.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEd25519SigningKey_lower(_ value: Ed25519SigningKey) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeEd25519SigningKey.lower(value)
+}
+
+
+
+
+
+
+/**
+ * The type represents an Ed25519 public key as defined in `RFC8032 § 5.1.5` (https://www.rfc-editor.org/rfc/rfc8032#section-5.1.5).
+ *
+ * Furthermore, the type supports (de)serialization w.r.t `Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
+ */
+public protocol Ed25519VerifyingKeyProtocol: AnyObject, Sendable {
+    
+    /**
+     * The multibase-encoding method, as specified by `Multikey` (https://www.w3.org/TR/controller-document/#Multikey):
+     *
+     * The encoding of an Ed25519 public key MUST start with the two-byte prefix 0xed01 (the varint expression of 0xed),
+     * followed by the 32-byte public key data.
+     * The resulting 34-byte value MUST then be encoded using the base-58-btc alphabet,
+     * and then prepended with the base-58-btc Multibase header (z).
+     */
+    func toMultibase()  -> String
+    
+    /**
+     * Strictly verify a signature on a message with this public key.
+     */
+    func verifyStrict(message: String, signature: Ed25519Signature) throws 
+    
+    /**
+     * Strictly verify a signature on a hex message with this public key.
+     */
+    func verifyStrictFromHex(messageHex: String, signature: Ed25519Signature) throws 
+    
+    /**
+     * Write ASN.1 DER-encoded public key to the given path.
+     */
+    func writePublicKeyPemFile(publicKeyPemFile: String) throws 
+    
+}
+/**
+ * The type represents an Ed25519 public key as defined in `RFC8032 § 5.1.5` (https://www.rfc-editor.org/rfc/rfc8032#section-5.1.5).
+ *
+ * Furthermore, the type supports (de)serialization w.r.t `Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
+ */
+open class Ed25519VerifyingKey: Ed25519VerifyingKeyProtocol, @unchecked Sendable {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_did_sidekicks_fn_clone_ed25519verifyingkey(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_did_sidekicks_fn_free_ed25519verifyingkey(pointer, $0) }
+    }
+
+    
+    /**
+     * The type constructor from a multibase-encoded value, as specified by `Multikey` (https://www.w3.org/TR/controller-document/#Multikey):
+     *
+     * The encoding of an Ed25519 public key MUST start with the two-byte prefix 0xed01 (the varint expression of 0xed),
+     * followed by the 32-byte public key data.
+     * The resulting 34-byte value MUST then be encoded using the base-58-btc alphabet,
+     * and then prepended with the base-58-btc Multibase header (z).
+     */
+public static func fromMultibase(multibase: String)throws  -> Ed25519VerifyingKey  {
+    return try  FfiConverterTypeEd25519VerifyingKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_constructor_ed25519verifyingkey_from_multibase(
+        FfiConverterString.lower(multibase),$0
+    )
+})
+}
+    
+    /**
+     * Deserialize PKCS#8-encoded public key from PEM.
+     */
+public static func fromPublicKeyPem(publicKeyPem: String)throws  -> Ed25519VerifyingKey  {
+    return try  FfiConverterTypeEd25519VerifyingKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_constructor_ed25519verifyingkey_from_public_key_pem(
+        FfiConverterString.lower(publicKeyPem),$0
+    )
+})
+}
+    
+    /**
+     * Load public key object from a PEM-encoded file on the local filesystem.
+     */
+public static func readPublicKeyPemFile(publicKeyPemFile: String)throws  -> Ed25519VerifyingKey  {
+    return try  FfiConverterTypeEd25519VerifyingKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_constructor_ed25519verifyingkey_read_public_key_pem_file(
+        FfiConverterString.lower(publicKeyPemFile),$0
+    )
+})
+}
+    
+
+    
+    /**
+     * The multibase-encoding method, as specified by `Multikey` (https://www.w3.org/TR/controller-document/#Multikey):
+     *
+     * The encoding of an Ed25519 public key MUST start with the two-byte prefix 0xed01 (the varint expression of 0xed),
+     * followed by the 32-byte public key data.
+     * The resulting 34-byte value MUST then be encoded using the base-58-btc alphabet,
+     * and then prepended with the base-58-btc Multibase header (z).
+     */
+open func toMultibase() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_method_ed25519verifyingkey_to_multibase(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * Strictly verify a signature on a message with this public key.
+     */
+open func verifyStrict(message: String, signature: Ed25519Signature)throws   {try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_ed25519verifyingkey_verify_strict(self.uniffiClonePointer(),
+        FfiConverterString.lower(message),
+        FfiConverterTypeEd25519Signature_lower(signature),$0
+    )
+}
+}
+    
+    /**
+     * Strictly verify a signature on a hex message with this public key.
+     */
+open func verifyStrictFromHex(messageHex: String, signature: Ed25519Signature)throws   {try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_ed25519verifyingkey_verify_strict_from_hex(self.uniffiClonePointer(),
+        FfiConverterString.lower(messageHex),
+        FfiConverterTypeEd25519Signature_lower(signature),$0
+    )
+}
+}
+    
+    /**
+     * Write ASN.1 DER-encoded public key to the given path.
+     */
+open func writePublicKeyPemFile(publicKeyPemFile: String)throws   {try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_ed25519verifyingkey_write_public_key_pem_file(self.uniffiClonePointer(),
+        FfiConverterString.lower(publicKeyPemFile),$0
+    )
+}
+}
+    
+
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEd25519VerifyingKey: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = Ed25519VerifyingKey
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Ed25519VerifyingKey {
+        return Ed25519VerifyingKey(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: Ed25519VerifyingKey) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Ed25519VerifyingKey {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: Ed25519VerifyingKey, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEd25519VerifyingKey_lift(_ pointer: UnsafeMutableRawPointer) throws -> Ed25519VerifyingKey {
+    return try FfiConverterTypeEd25519VerifyingKey.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEd25519VerifyingKey_lower(_ value: Ed25519VerifyingKey) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeEd25519VerifyingKey.lower(value)
+}
+
+
+
+
+
+
+/**
+ * Represents the `eddsa-jcs-2022` cryptographic suite, as specified by https://w3c.github.io/vc-di-eddsa/#eddsa-jcs-2022.
+ *
+ * It takes an input document, canonicalizes the document using the JSON Canonicalization Scheme `RFC8785` (https://www.rfc-editor.org/rfc/rfc8785),
+ * and then cryptographically hashes and signs the output resulting in the creation of a data integrity proof.
+ */
+public protocol EddsaJcs2022CryptosuiteProtocol: AnyObject, Sendable {
+    
+    /**
+     * Create a data integrity proof given an unsecured data document, as specified by https://www.w3.org/TR/vc-di-eddsa/#create-proof-eddsa-jcs-2022.
+     *
+     * The `VCDataIntegrityProofVerificationError` error code denotes a failure w.r.t. https://www.w3.org/TR/vc-di-eddsa/#transformation-eddsa-jcs-2022.
+     *
+     * The `VCDataIntegrityProofTransformationError` error code denotes a failure w.r.t. https://www.w3.org/TR/vc-di-eddsa/#transformation-eddsa-jcs-2022.
+     *
+     * A runtime error occurs in case this `EddsaJcs2022Cryptosuite` instance features no signing key (required for proof creation).
+     */
+    func addProof(unsecuredDocument: String, options: CryptoSuiteProofOptions) throws  -> String
+    
+    /**
+     * Verify a data integrity proof given an secured data document, as specified by https://www.w3.org/TR/vc-di-eddsa/#verify-proof-eddsa-jcs-2022.
+     *
+     * The `VCDataIntegrityProofTransformationError` error code denotes a failure w.r.t. https://www.w3.org/TR/vc-di-eddsa/#transformation-eddsa-jcs-2022
+     *
+     * The `KeySignatureError` error code indicates if verification of a signature on a hex message with this verification key fails.
+     */
+    func verifyProof(proof: DataIntegrityProof, docHash: String) throws 
+    
+}
+/**
+ * Represents the `eddsa-jcs-2022` cryptographic suite, as specified by https://w3c.github.io/vc-di-eddsa/#eddsa-jcs-2022.
+ *
+ * It takes an input document, canonicalizes the document using the JSON Canonicalization Scheme `RFC8785` (https://www.rfc-editor.org/rfc/rfc8785),
+ * and then cryptographically hashes and signs the output resulting in the creation of a data integrity proof.
+ */
+open class EddsaJcs2022Cryptosuite: EddsaJcs2022CryptosuiteProtocol, @unchecked Sendable {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_did_sidekicks_fn_clone_eddsajcs2022cryptosuite(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_did_sidekicks_fn_free_eddsajcs2022cryptosuite(pointer, $0) }
+    }
+
+    
+    /**
+     * The signing-capable constructor.
+     */
+public static func fromSigningKey(signingKey: Ed25519SigningKey) -> EddsaJcs2022Cryptosuite  {
+    return try!  FfiConverterTypeEddsaJcs2022Cryptosuite_lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_constructor_eddsajcs2022cryptosuite_from_signing_key(
+        FfiConverterTypeEd25519SigningKey_lower(signingKey),$0
+    )
+})
+}
+    
+    /**
+     * The verifying-capable constructor.
+     */
+public static func fromVerifyingKey(verifyingKey: Ed25519VerifyingKey) -> EddsaJcs2022Cryptosuite  {
+    return try!  FfiConverterTypeEddsaJcs2022Cryptosuite_lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_constructor_eddsajcs2022cryptosuite_from_verifying_key(
+        FfiConverterTypeEd25519VerifyingKey_lower(verifyingKey),$0
+    )
+})
+}
+    
+
+    
+    /**
+     * Create a data integrity proof given an unsecured data document, as specified by https://www.w3.org/TR/vc-di-eddsa/#create-proof-eddsa-jcs-2022.
+     *
+     * The `VCDataIntegrityProofVerificationError` error code denotes a failure w.r.t. https://www.w3.org/TR/vc-di-eddsa/#transformation-eddsa-jcs-2022.
+     *
+     * The `VCDataIntegrityProofTransformationError` error code denotes a failure w.r.t. https://www.w3.org/TR/vc-di-eddsa/#transformation-eddsa-jcs-2022.
+     *
+     * A runtime error occurs in case this `EddsaJcs2022Cryptosuite` instance features no signing key (required for proof creation).
+     */
+open func addProof(unsecuredDocument: String, options: CryptoSuiteProofOptions)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_eddsajcs2022cryptosuite_add_proof(self.uniffiClonePointer(),
+        FfiConverterString.lower(unsecuredDocument),
+        FfiConverterTypeCryptoSuiteProofOptions_lower(options),$0
+    )
+})
+}
+    
+    /**
+     * Verify a data integrity proof given an secured data document, as specified by https://www.w3.org/TR/vc-di-eddsa/#verify-proof-eddsa-jcs-2022.
+     *
+     * The `VCDataIntegrityProofTransformationError` error code denotes a failure w.r.t. https://www.w3.org/TR/vc-di-eddsa/#transformation-eddsa-jcs-2022
+     *
+     * The `KeySignatureError` error code indicates if verification of a signature on a hex message with this verification key fails.
+     */
+open func verifyProof(proof: DataIntegrityProof, docHash: String)throws   {try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_eddsajcs2022cryptosuite_verify_proof(self.uniffiClonePointer(),
+        FfiConverterTypeDataIntegrityProof_lower(proof),
+        FfiConverterString.lower(docHash),$0
+    )
+}
+}
+    
+
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeEddsaJcs2022Cryptosuite: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = EddsaJcs2022Cryptosuite
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> EddsaJcs2022Cryptosuite {
+        return EddsaJcs2022Cryptosuite(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: EddsaJcs2022Cryptosuite) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> EddsaJcs2022Cryptosuite {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: EddsaJcs2022Cryptosuite, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEddsaJcs2022Cryptosuite_lift(_ pointer: UnsafeMutableRawPointer) throws -> EddsaJcs2022Cryptosuite {
+    return try FfiConverterTypeEddsaJcs2022Cryptosuite.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeEddsaJcs2022Cryptosuite_lower(_ value: EddsaJcs2022Cryptosuite) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeEddsaJcs2022Cryptosuite.lower(value)
+}
+
+
+
+
+
+
+/**
+ * A `SHA2` (SHA-256) (https://en.wikipedia.org/wiki/SHA-2) hasher with `RFC-8785` (https://datatracker.ietf.org/doc/html/rfc8785) in mind.
+ *
+ * It is capable of hashing any JSON structure w.r.t. `RFC-8785` (JSON Canonicalization Scheme - JCS).
+ */
+public protocol JcsSha256HasherProtocol: AnyObject, Sendable {
+    
+    /**
+     * Serialize the given data structure as a JCS UTF-8 string and calculate SHA2-256 multihash out of it.
+     *
+     * The multihash encoded in `base58btc` format is returned.
+     */
+    func base58btcEncodeMultihash(json: String) throws  -> String
+    
+    /**
+     * Serialize the given data structure as a JCS UTF-8 string and calculate SHA2-256 hash out of it.
+     *
+     * The hash encoded as hex strict representation is returned. Lower case letters are used (e.g. f9b4ca).
+     *
+     * The `JscHashingFailed` error code denotes serialization failure.
+     */
+    func encodeHex(json: String) throws  -> String
+    
+}
+/**
+ * A `SHA2` (SHA-256) (https://en.wikipedia.org/wiki/SHA-2) hasher with `RFC-8785` (https://datatracker.ietf.org/doc/html/rfc8785) in mind.
+ *
+ * It is capable of hashing any JSON structure w.r.t. `RFC-8785` (JSON Canonicalization Scheme - JCS).
+ */
+open class JcsSha256Hasher: JcsSha256HasherProtocol, @unchecked Sendable {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_did_sidekicks_fn_clone_jcssha256hasher(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_did_sidekicks_fn_free_jcssha256hasher(pointer, $0) }
+    }
+
+    
+    /**
+     * The default constructor.
+     */
+public static func `default`() -> JcsSha256Hasher  {
+    return try!  FfiConverterTypeJcsSha256Hasher_lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_constructor_jcssha256hasher_default($0
+    )
+})
+}
+    
+
+    
+    /**
+     * Serialize the given data structure as a JCS UTF-8 string and calculate SHA2-256 multihash out of it.
+     *
+     * The multihash encoded in `base58btc` format is returned.
+     */
+open func base58btcEncodeMultihash(json: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_jcssha256hasher_base58btc_encode_multihash(self.uniffiClonePointer(),
+        FfiConverterString.lower(json),$0
+    )
+})
+}
+    
+    /**
+     * Serialize the given data structure as a JCS UTF-8 string and calculate SHA2-256 hash out of it.
+     *
+     * The hash encoded as hex strict representation is returned. Lower case letters are used (e.g. f9b4ca).
+     *
+     * The `JscHashingFailed` error code denotes serialization failure.
+     */
+open func encodeHex(json: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_jcssha256hasher_encode_hex(self.uniffiClonePointer(),
+        FfiConverterString.lower(json),$0
+    )
+})
+}
+    
+
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeJcsSha256Hasher: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = JcsSha256Hasher
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> JcsSha256Hasher {
+        return JcsSha256Hasher(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: JcsSha256Hasher) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> JcsSha256Hasher {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: JcsSha256Hasher, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJcsSha256Hasher_lift(_ pointer: UnsafeMutableRawPointer) throws -> JcsSha256Hasher {
+    return try FfiConverterTypeJcsSha256Hasher.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeJcsSha256Hasher_lower(_ value: JcsSha256Hasher) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeJcsSha256Hasher.lower(value)
+}
+
+
+
+
 public struct Jwk {
     public var alg: String?
     public var kid: String?
@@ -1983,14 +3279,54 @@ public enum DidSidekicksError: Swift.Error {
     case InvalidDidMethodParameter(message: String)
     
     /**
+     * Failed to calculate SHA2-256 hash of canonical JSON UTF-8 string.
+     */
+    case JscHashingFailed(message: String)
+    
+    /**
      * No such JWK in the DID document.
      */
     case KeyNotFound(message: String)
     
     /**
+     * Failed to save key.
+     */
+    case KeySerializationFailed(message: String)
+    
+    /**
+     * Failure of a signature to satisfy the verification equation.
+     */
+    case KeySignatureError(message: String)
+    
+    /**
+     * Failed to load key.
+     */
+    case KeyDeserializationFailed(message: String)
+    
+    /**
+     * Failed to convert key from multibase format
+     */
+    case MultibaseKeyConversionFailed(message: String)
+    
+    /**
      * Non-existing key referenced in the DID document.
      */
     case NonExistingKeyReferenced(message: String)
+    
+    /**
+     * A request to generate a proof failed, as specified by https://www.w3.org/TR/vc-data-integrity/#processing-errors
+     */
+    case VcDataIntegrityProofGenerationError(message: String)
+    
+    /**
+     * An error was encountered during proof verification, as specified by https://www.w3.org/TR/vc-data-integrity/#processing-errors
+     */
+    case VcDataIntegrityProofVerificationError(message: String)
+    
+    /**
+     * An error was encountered during the transformation process, as specified by https://www.w3.org/TR/vc-data-integrity/#processing-errors
+     */
+    case VcDataIntegrityProofTransformationError(message: String)
     
 }
 
@@ -2028,11 +3364,43 @@ public struct FfiConverterTypeDidSidekicksError: FfiConverterRustBuffer {
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 6: return .KeyNotFound(
+        case 6: return .JscHashingFailed(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 7: return .NonExistingKeyReferenced(
+        case 7: return .KeyNotFound(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 8: return .KeySerializationFailed(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 9: return .KeySignatureError(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 10: return .KeyDeserializationFailed(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 11: return .MultibaseKeyConversionFailed(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 12: return .NonExistingKeyReferenced(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 13: return .VcDataIntegrityProofGenerationError(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 14: return .VcDataIntegrityProofVerificationError(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 15: return .VcDataIntegrityProofTransformationError(
             message: try FfiConverterString.read(from: &buf)
         )
         
@@ -2057,10 +3425,26 @@ public struct FfiConverterTypeDidSidekicksError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(4))
         case .InvalidDidMethodParameter(_ /* message is ignored*/):
             writeInt(&buf, Int32(5))
-        case .KeyNotFound(_ /* message is ignored*/):
+        case .JscHashingFailed(_ /* message is ignored*/):
             writeInt(&buf, Int32(6))
-        case .NonExistingKeyReferenced(_ /* message is ignored*/):
+        case .KeyNotFound(_ /* message is ignored*/):
             writeInt(&buf, Int32(7))
+        case .KeySerializationFailed(_ /* message is ignored*/):
+            writeInt(&buf, Int32(8))
+        case .KeySignatureError(_ /* message is ignored*/):
+            writeInt(&buf, Int32(9))
+        case .KeyDeserializationFailed(_ /* message is ignored*/):
+            writeInt(&buf, Int32(10))
+        case .MultibaseKeyConversionFailed(_ /* message is ignored*/):
+            writeInt(&buf, Int32(11))
+        case .NonExistingKeyReferenced(_ /* message is ignored*/):
+            writeInt(&buf, Int32(12))
+        case .VcDataIntegrityProofGenerationError(_ /* message is ignored*/):
+            writeInt(&buf, Int32(13))
+        case .VcDataIntegrityProofVerificationError(_ /* message is ignored*/):
+            writeInt(&buf, Int32(14))
+        case .VcDataIntegrityProofTransformationError(_ /* message is ignored*/):
+            writeInt(&buf, Int32(15))
 
         
         }
@@ -2554,10 +3938,91 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_method_didmethodparameter_is_u64() != 29426) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_did_sidekicks_checksum_method_ed25519signature_to_multibase() != 12576) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_ed25519signingkey_get_verifying_key() != 14397) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_ed25519signingkey_sign() != 44879) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_ed25519signingkey_to_multibase() != 57237) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_ed25519signingkey_write_pkcs8_pem_file() != 5046) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_ed25519verifyingkey_to_multibase() != 60193) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_ed25519verifyingkey_verify_strict() != 7365) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_ed25519verifyingkey_verify_strict_from_hex() != 60483) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_ed25519verifyingkey_write_public_key_pem_file() != 61788) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_eddsajcs2022cryptosuite_add_proof() != 32337) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_eddsajcs2022cryptosuite_verify_proof() != 26174) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_jcssha256hasher_base58btc_encode_multihash() != 9605) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_jcssha256hasher_encode_hex() != 62647) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_cryptosuiteproofoptions_default() != 45975) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_cryptosuiteproofoptions_new_eddsa_jcs_2022() != 15190) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_dataintegrityproof_from_json_string() != 18631) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_did_sidekicks_checksum_constructor_diddoc_from_json() != 34742) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_constructor_didlogentryvalidator_from() != 35475) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_ed25519signature_from_multibase() != 13030) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_ed25519signingkey_from_multibase() != 27823) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_ed25519signingkey_from_pkcs8_pem() != 48757) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_ed25519signingkey_generate() != 14367) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_ed25519signingkey_read_pkcs8_pem_file() != 24363) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_ed25519verifyingkey_from_multibase() != 37951) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_ed25519verifyingkey_from_public_key_pem() != 64657) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_ed25519verifyingkey_read_public_key_pem_file() != 17361) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_eddsajcs2022cryptosuite_from_signing_key() != 38121) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_eddsajcs2022cryptosuite_from_verifying_key() != 46860) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_jcssha256hasher_default() != 49351) {
         return InitializationResult.apiChecksumMismatch
     }
 
