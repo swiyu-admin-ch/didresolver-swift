@@ -1,11 +1,11 @@
 // swift-tools-version:5.3
 import PackageDescription
 
-let version = "2.5.0"
+let version = "2.6.0"
 let xcframework_name = "didresolver"
 let binary_target_url_github_owner = "swiyu-admin-ch"
 let binary_target_url_github_repo = "didresolver-swift"
-let checksum = "c8c16afd22a95bb7e0e8989ef55c0430dc8d9291d2d1ff84469efcc46b49326c"
+let checksum = "b4d19b59d31cbbd94fdae181ff3791a746a4af9f75849af325679ded928a993c"
 
 let package = Package(
     name: "DidResolver",
