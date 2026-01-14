@@ -567,7 +567,7 @@ open class CryptoSuiteProofOptions: CryptoSuiteProofOptionsProtocol, @unchecked 
 
     
     /**
-     * The default constructor aligned with the `eddsa-jcs-2022` suite (https://www.w3.org/TR/vc-di-eddsa/#proof-configuration-eddsa-jcs-2022), hence:
+     * The empty (default) constructor aligned with the `eddsa-jcs-2022` suite (https://www.w3.org/TR/vc-di-eddsa/#proof-configuration-eddsa-jcs-2022), hence:
      *
      * - `proof_type: "DataIntegrityProof"`
      *
@@ -577,9 +577,9 @@ open class CryptoSuiteProofOptions: CryptoSuiteProofOptionsProtocol, @unchecked 
      *
      * - `proof_purpose: "authentication"`
      */
-public static func `default`() -> CryptoSuiteProofOptions  {
+public static func build() -> CryptoSuiteProofOptions  {
     return try!  FfiConverterTypeCryptoSuiteProofOptions_lift(try! rustCall() {
-    uniffi_did_sidekicks_fn_constructor_cryptosuiteproofoptions_default($0
+    uniffi_did_sidekicks_fn_constructor_cryptosuiteproofoptions_build($0
     )
 })
 }
@@ -1816,9 +1816,15 @@ public func FfiConverterTypeDidMethodParameter_lower(_ value: DidMethodParameter
  * signature, and does not necessarily represent well-formed field or curve
  * elements.
  *
- * Furthermore, the type supports (de)serialization w.r.t `Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
+ * Furthermore, the type supports (de)serialization w.r.t `The Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
  */
 public protocol Ed25519SignatureProtocol: AnyObject, Sendable {
+    
+    /**
+     * Encode the hex strict representing this signature.
+     * Lower case letters are used (e.g. f9b4ca)
+     */
+    func toHex()  -> String
     
     /**
      * The multibase-encoding method.
@@ -1831,7 +1837,7 @@ public protocol Ed25519SignatureProtocol: AnyObject, Sendable {
  * signature, and does not necessarily represent well-formed field or curve
  * elements.
  *
- * Furthermore, the type supports (de)serialization w.r.t `Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
+ * Furthermore, the type supports (de)serialization w.r.t `The Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
  */
 open class Ed25519Signature: Ed25519SignatureProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
@@ -1884,7 +1890,27 @@ open class Ed25519Signature: Ed25519SignatureProtocol, @unchecked Sendable {
 
     
     /**
+     * Parse an Ed25519 signature from a byte hex-encoded string.
+     *
+     * The `HexConversionFailed` error code denotes either:
+     *
+     * - a malformed hex-encoded input or
+     *
+     * - a properly hex-encoded input represents no 64-bytes slice
+     */
+public static func fromHex(hexEncoded: String)throws  -> Ed25519Signature  {
+    return try  FfiConverterTypeEd25519Signature_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_constructor_ed25519signature_from_hex(
+        FfiConverterString.lower(hexEncoded),$0
+    )
+})
+}
+    
+    /**
      * The type constructor from a multibase-encoded value.
+     *
+     * The `MultibaseConversionFailed` error code denotes that a supplied string value is not multibase-encoded as specified by
+     * `The Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html)
      */
 public static func fromMultibase(multibase: String)throws  -> Ed25519Signature  {
     return try  FfiConverterTypeEd25519Signature_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
@@ -1895,6 +1921,17 @@ public static func fromMultibase(multibase: String)throws  -> Ed25519Signature  
 }
     
 
+    
+    /**
+     * Encode the hex strict representing this signature.
+     * Lower case letters are used (e.g. f9b4ca)
+     */
+open func toHex() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_method_ed25519signature_to_hex(self.uniffiClonePointer(),$0
+    )
+})
+}
     
     /**
      * The multibase-encoding method.
@@ -1970,7 +2007,7 @@ public func FfiConverterTypeEd25519Signature_lower(_ value: Ed25519Signature) ->
  * > The private key is 32 octets (256 bits, corresponding to b) of
  * > cryptographically secure random data.
  *
- * Furthermore, the type supports (de)serialization w.r.t `Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
+ * Furthermore, the type supports (de)serialization w.r.t `The Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
  */
 public protocol Ed25519SigningKeyProtocol: AnyObject, Sendable {
     
@@ -1983,6 +2020,13 @@ public protocol Ed25519SigningKeyProtocol: AnyObject, Sendable {
      * Sign the given message and return a digital signature.
      */
     func sign(message: String)  -> Ed25519Signature
+    
+    /**
+     * Sign the given hex-encoded message and return a digital signature.
+     *
+     * The `KeySignatureError` error code denotes a malformed hex-encoded message.
+     */
+    func signHex(message: String) throws  -> Ed25519Signature
     
     /**
      * The multibase-encoding method, as specified by `Multikey` (https://www.w3.org/TR/controller-document/#Multikey):
@@ -2005,7 +2049,7 @@ public protocol Ed25519SigningKeyProtocol: AnyObject, Sendable {
  * > The private key is 32 octets (256 bits, corresponding to b) of
  * > cryptographically secure random data.
  *
- * Furthermore, the type supports (de)serialization w.r.t `Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
+ * Furthermore, the type supports (de)serialization w.r.t `The Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html).
  */
 open class Ed25519SigningKey: Ed25519SigningKeyProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
@@ -2063,6 +2107,9 @@ open class Ed25519SigningKey: Ed25519SigningKeyProtocol, @unchecked Sendable {
      * The encoding of an Ed25519 secret key MUST start with the two-byte prefix 0x8026 (the varint expression of 0x1300),
      * followed by the 32-byte secret key data. The resulting 34-byte value MUST then be encoded using the base-58-btc alphabet,
      * and then prepended with the base-58-btc Multibase header (z).
+     *
+     * The `MultibaseConversionFailed` error code denotes that a supplied string value is not multibase-encoded as specified by
+     * `The Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html)
      */
 public static func fromMultibase(multibase: String)throws  -> Ed25519SigningKey  {
     return try  FfiConverterTypeEd25519SigningKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
@@ -2124,6 +2171,19 @@ open func getVerifyingKey() -> Ed25519VerifyingKey  {
 open func sign(message: String) -> Ed25519Signature  {
     return try!  FfiConverterTypeEd25519Signature_lift(try! rustCall() {
     uniffi_did_sidekicks_fn_method_ed25519signingkey_sign(self.uniffiClonePointer(),
+        FfiConverterString.lower(message),$0
+    )
+})
+}
+    
+    /**
+     * Sign the given hex-encoded message and return a digital signature.
+     *
+     * The `KeySignatureError` error code denotes a malformed hex-encoded message.
+     */
+open func signHex(message: String)throws  -> Ed25519Signature  {
+    return try  FfiConverterTypeEd25519Signature_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_ed25519signingkey_sign_hex(self.uniffiClonePointer(),
         FfiConverterString.lower(message),$0
     )
 })
@@ -2306,6 +2366,9 @@ open class Ed25519VerifyingKey: Ed25519VerifyingKeyProtocol, @unchecked Sendable
      * followed by the 32-byte public key data.
      * The resulting 34-byte value MUST then be encoded using the base-58-btc alphabet,
      * and then prepended with the base-58-btc Multibase header (z).
+     *
+     * The `MultibaseConversionFailed` error code denotes that a supplied string value is not multibase-encoded as specified by
+     * `The Multibase Data Format` (https://www.ietf.org/archive/id/draft-multiformats-multibase-08.html)
      */
 public static func fromMultibase(multibase: String)throws  -> Ed25519VerifyingKey  {
     return try  FfiConverterTypeEd25519VerifyingKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
@@ -2724,11 +2787,11 @@ open class JcsSha256Hasher: JcsSha256HasherProtocol, @unchecked Sendable {
 
     
     /**
-     * The default constructor.
+     * The empty (default) constructor.
      */
-public static func `default`() -> JcsSha256Hasher  {
+public static func build() -> JcsSha256Hasher  {
     return try!  FfiConverterTypeJcsSha256Hasher_lift(try! rustCall() {
-    uniffi_did_sidekicks_fn_constructor_jcssha256hasher_default($0
+    uniffi_did_sidekicks_fn_constructor_jcssha256hasher_build($0
     )
 })
 }
@@ -3264,6 +3327,11 @@ public enum DidSidekicksError: Swift.Error {
     case DeserializationFailed(message: String)
     
     /**
+     * Failed to create type a from hex-encoded string.
+     */
+    case HexConversionFailed(message: String)
+    
+    /**
      * Invalid DID document.
      */
     case InvalidDidDocument(message: String)
@@ -3304,9 +3372,9 @@ public enum DidSidekicksError: Swift.Error {
     case KeyDeserializationFailed(message: String)
     
     /**
-     * Failed to convert key from multibase format
+     * Failed to convert type from a multibase-encoded string.
      */
-    case MultibaseKeyConversionFailed(message: String)
+    case MultibaseConversionFailed(message: String)
     
     /**
      * Non-existing key referenced in the DID document.
@@ -3352,55 +3420,59 @@ public struct FfiConverterTypeDidSidekicksError: FfiConverterRustBuffer {
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 3: return .InvalidDidDocument(
+        case 3: return .HexConversionFailed(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 4: return .InvalidDataIntegrityProof(
+        case 4: return .InvalidDidDocument(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 5: return .InvalidDidMethodParameter(
+        case 5: return .InvalidDataIntegrityProof(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 6: return .JscHashingFailed(
+        case 6: return .InvalidDidMethodParameter(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 7: return .KeyNotFound(
+        case 7: return .JscHashingFailed(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 8: return .KeySerializationFailed(
+        case 8: return .KeyNotFound(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 9: return .KeySignatureError(
+        case 9: return .KeySerializationFailed(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 10: return .KeyDeserializationFailed(
+        case 10: return .KeySignatureError(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 11: return .MultibaseKeyConversionFailed(
+        case 11: return .KeyDeserializationFailed(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 12: return .NonExistingKeyReferenced(
+        case 12: return .MultibaseConversionFailed(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 13: return .VcDataIntegrityProofGenerationError(
+        case 13: return .NonExistingKeyReferenced(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 14: return .VcDataIntegrityProofVerificationError(
+        case 14: return .VcDataIntegrityProofGenerationError(
             message: try FfiConverterString.read(from: &buf)
         )
         
-        case 15: return .VcDataIntegrityProofTransformationError(
+        case 15: return .VcDataIntegrityProofVerificationError(
+            message: try FfiConverterString.read(from: &buf)
+        )
+        
+        case 16: return .VcDataIntegrityProofTransformationError(
             message: try FfiConverterString.read(from: &buf)
         )
         
@@ -3419,32 +3491,34 @@ public struct FfiConverterTypeDidSidekicksError: FfiConverterRustBuffer {
             writeInt(&buf, Int32(1))
         case .DeserializationFailed(_ /* message is ignored*/):
             writeInt(&buf, Int32(2))
-        case .InvalidDidDocument(_ /* message is ignored*/):
+        case .HexConversionFailed(_ /* message is ignored*/):
             writeInt(&buf, Int32(3))
-        case .InvalidDataIntegrityProof(_ /* message is ignored*/):
+        case .InvalidDidDocument(_ /* message is ignored*/):
             writeInt(&buf, Int32(4))
-        case .InvalidDidMethodParameter(_ /* message is ignored*/):
+        case .InvalidDataIntegrityProof(_ /* message is ignored*/):
             writeInt(&buf, Int32(5))
-        case .JscHashingFailed(_ /* message is ignored*/):
+        case .InvalidDidMethodParameter(_ /* message is ignored*/):
             writeInt(&buf, Int32(6))
-        case .KeyNotFound(_ /* message is ignored*/):
+        case .JscHashingFailed(_ /* message is ignored*/):
             writeInt(&buf, Int32(7))
-        case .KeySerializationFailed(_ /* message is ignored*/):
+        case .KeyNotFound(_ /* message is ignored*/):
             writeInt(&buf, Int32(8))
-        case .KeySignatureError(_ /* message is ignored*/):
+        case .KeySerializationFailed(_ /* message is ignored*/):
             writeInt(&buf, Int32(9))
-        case .KeyDeserializationFailed(_ /* message is ignored*/):
+        case .KeySignatureError(_ /* message is ignored*/):
             writeInt(&buf, Int32(10))
-        case .MultibaseKeyConversionFailed(_ /* message is ignored*/):
+        case .KeyDeserializationFailed(_ /* message is ignored*/):
             writeInt(&buf, Int32(11))
-        case .NonExistingKeyReferenced(_ /* message is ignored*/):
+        case .MultibaseConversionFailed(_ /* message is ignored*/):
             writeInt(&buf, Int32(12))
-        case .VcDataIntegrityProofGenerationError(_ /* message is ignored*/):
+        case .NonExistingKeyReferenced(_ /* message is ignored*/):
             writeInt(&buf, Int32(13))
-        case .VcDataIntegrityProofVerificationError(_ /* message is ignored*/):
+        case .VcDataIntegrityProofGenerationError(_ /* message is ignored*/):
             writeInt(&buf, Int32(14))
-        case .VcDataIntegrityProofTransformationError(_ /* message is ignored*/):
+        case .VcDataIntegrityProofVerificationError(_ /* message is ignored*/):
             writeInt(&buf, Int32(15))
+        case .VcDataIntegrityProofTransformationError(_ /* message is ignored*/):
+            writeInt(&buf, Int32(16))
 
         
         }
@@ -3938,6 +4012,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_method_didmethodparameter_is_u64() != 29426) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_did_sidekicks_checksum_method_ed25519signature_to_hex() != 54711) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_did_sidekicks_checksum_method_ed25519signature_to_multibase() != 12576) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3945,6 +4022,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_ed25519signingkey_sign() != 44879) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_ed25519signingkey_sign_hex() != 37320) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_ed25519signingkey_to_multibase() != 57237) {
@@ -3977,7 +4057,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_method_jcssha256hasher_encode_hex() != 62647) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_constructor_cryptosuiteproofoptions_default() != 45975) {
+    if (uniffi_did_sidekicks_checksum_constructor_cryptosuiteproofoptions_build() != 60667) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_constructor_cryptosuiteproofoptions_new_eddsa_jcs_2022() != 15190) {
@@ -3990,6 +4070,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_constructor_didlogentryvalidator_from() != 35475) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_ed25519signature_from_hex() != 54324) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_constructor_ed25519signature_from_multibase() != 13030) {
@@ -4022,7 +4105,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_constructor_eddsajcs2022cryptosuite_from_verifying_key() != 46860) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_constructor_jcssha256hasher_default() != 49351) {
+    if (uniffi_did_sidekicks_checksum_constructor_jcssha256hasher_build() != 3669) {
         return InitializationResult.apiChecksumMismatch
     }
 
