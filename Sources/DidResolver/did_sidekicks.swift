@@ -811,14 +811,14 @@ public protocol DidDocProtocol: AnyObject, Sendable {
     
     func getContext()  -> [String]
     
-    func getController()  -> [String]
+    func getController()  -> String?
     
     func getDeactivated()  -> Bool
     
     func getId()  -> String
     
     /**
-     * Returns a cryptographic public key (`Jwk`) referenced by the supplied `key_id`, if any.
+     * Returns a cryptographic public key ([`Jwk`]) referenced by the supplied fragment (`key_id`), if any.
      * The key lookup is always done across all verification methods (`verificationMethod`) and
      * verification relationships
      * (`authentication`, `assertionMethod`, `keyAgreement`, `capabilityInvocation`, `capabilityInvocation`).
@@ -827,10 +827,39 @@ public protocol DidDocProtocol: AnyObject, Sendable {
      */
     func getKey(keyId: String) throws  -> Jwk
     
+    /**
+     * Returns a cryptographic public key ([`Jwk`]) referenced by the supplied fragment (`key_id`), if any.
+     * The key lookup is always done across all verification methods (`verificationMethod`) and
+     * verification relationships
+     * (`authentication`, `assertionMethod`, `keyAgreement`, `capabilityInvocation`, `capabilityInvocation`).
+     *
+     * If no such key exists, `DidSidekicksError::KeyNotFound` is returned.
+     */
+    func getKeyByFragment(keyId: String) throws  -> Jwk
+    
+    /**
+     * Returns a cryptographic public key ([`Jwk`]) referenced by the supplied id of the
+     * verification method, if any.
+     * The key lookup is always done across all verification methods (`verificationMethod`) and
+     * verification relationships
+     * (`authentication`, `assertionMethod`, `keyAgreement`, `capabilityInvocation`, `capabilityInvocation`).
+     *
+     * If no such key exists, `DidSidekicksError::KeyNotFound` is returned.
+     */
+    func getKeyByMethodId(keyId: String) throws  -> Jwk
+    
+    func getProfileVersion()  -> String?
+    
     func getVerificationMethod()  -> [VerificationMethod]
     
     /**
      * Serializes this `DidDoc` object as a `String` of JSON.
+     *
+     * The `SerializationFailed` error code denotes a serialization failure:
+     *
+     * - if `DidDoc`'s implementation of [`Serialize`] decides to fail, or
+     *
+     * - if `DidDoc` contains a map with non-string keys.
      */
     func toJson() throws  -> String
     
@@ -934,8 +963,8 @@ open func getContext() -> [String]  {
 })
 }
     
-open func getController() -> [String]  {
-    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+open func getController() -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
     uniffi_did_sidekicks_fn_method_diddoc_get_controller(self.uniffiClonePointer(),$0
     )
 })
@@ -956,7 +985,7 @@ open func getId() -> String  {
 }
     
     /**
-     * Returns a cryptographic public key (`Jwk`) referenced by the supplied `key_id`, if any.
+     * Returns a cryptographic public key ([`Jwk`]) referenced by the supplied fragment (`key_id`), if any.
      * The key lookup is always done across all verification methods (`verificationMethod`) and
      * verification relationships
      * (`authentication`, `assertionMethod`, `keyAgreement`, `capabilityInvocation`, `capabilityInvocation`).
@@ -971,6 +1000,46 @@ open func getKey(keyId: String)throws  -> Jwk  {
 })
 }
     
+    /**
+     * Returns a cryptographic public key ([`Jwk`]) referenced by the supplied fragment (`key_id`), if any.
+     * The key lookup is always done across all verification methods (`verificationMethod`) and
+     * verification relationships
+     * (`authentication`, `assertionMethod`, `keyAgreement`, `capabilityInvocation`, `capabilityInvocation`).
+     *
+     * If no such key exists, `DidSidekicksError::KeyNotFound` is returned.
+     */
+open func getKeyByFragment(keyId: String)throws  -> Jwk  {
+    return try  FfiConverterTypeJwk_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_diddoc_get_key_by_fragment(self.uniffiClonePointer(),
+        FfiConverterString.lower(keyId),$0
+    )
+})
+}
+    
+    /**
+     * Returns a cryptographic public key ([`Jwk`]) referenced by the supplied id of the
+     * verification method, if any.
+     * The key lookup is always done across all verification methods (`verificationMethod`) and
+     * verification relationships
+     * (`authentication`, `assertionMethod`, `keyAgreement`, `capabilityInvocation`, `capabilityInvocation`).
+     *
+     * If no such key exists, `DidSidekicksError::KeyNotFound` is returned.
+     */
+open func getKeyByMethodId(keyId: String)throws  -> Jwk  {
+    return try  FfiConverterTypeJwk_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_method_diddoc_get_key_by_method_id(self.uniffiClonePointer(),
+        FfiConverterString.lower(keyId),$0
+    )
+})
+}
+    
+open func getProfileVersion() -> String?  {
+    return try!  FfiConverterOptionString.lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_method_diddoc_get_profile_version(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
 open func getVerificationMethod() -> [VerificationMethod]  {
     return try!  FfiConverterSequenceTypeVerificationMethod.lift(try! rustCall() {
     uniffi_did_sidekicks_fn_method_diddoc_get_verification_method(self.uniffiClonePointer(),$0
@@ -980,6 +1049,12 @@ open func getVerificationMethod() -> [VerificationMethod]  {
     
     /**
      * Serializes this `DidDoc` object as a `String` of JSON.
+     *
+     * The `SerializationFailed` error code denotes a serialization failure:
+     *
+     * - if `DidDoc`'s implementation of [`Serialize`] decides to fail, or
+     *
+     * - if `DidDoc` contains a map with non-string keys.
      */
 open func toJson()throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
@@ -2026,7 +2101,7 @@ public protocol Ed25519SigningKeyProtocol: AnyObject, Sendable {
      *
      * The `KeySignatureError` error code denotes a malformed hex-encoded message.
      */
-    func signHex(message: String) throws  -> Ed25519Signature
+    func signHex(messageHex: String) throws  -> Ed25519Signature
     
     /**
      * The multibase-encoding method, as specified by `Multikey` (https://www.w3.org/TR/controller-document/#Multikey):
@@ -2181,10 +2256,10 @@ open func sign(message: String) -> Ed25519Signature  {
      *
      * The `KeySignatureError` error code denotes a malformed hex-encoded message.
      */
-open func signHex(message: String)throws  -> Ed25519Signature  {
+open func signHex(messageHex: String)throws  -> Ed25519Signature  {
     return try  FfiConverterTypeEd25519Signature_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
     uniffi_did_sidekicks_fn_method_ed25519signingkey_sign_hex(self.uniffiClonePointer(),
-        FfiConverterString.lower(message),$0
+        FfiConverterString.lower(messageHex),$0
     )
 })
 }
@@ -3928,7 +4003,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_method_diddoc_get_context() != 58325) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_diddoc_get_controller() != 37037) {
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_controller() != 4602) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_diddoc_get_deactivated() != 2048) {
@@ -3938,6 +4013,15 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_diddoc_get_key() != 61960) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_key_by_fragment() != 52536) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_key_by_method_id() != 36535) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_profile_version() != 18008) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_diddoc_get_verification_method() != 62805) {
@@ -4024,7 +4108,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_method_ed25519signingkey_sign() != 44879) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_ed25519signingkey_sign_hex() != 37320) {
+    if (uniffi_did_sidekicks_checksum_method_ed25519signingkey_sign_hex() != 43226) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_ed25519signingkey_to_multibase() != 57237) {

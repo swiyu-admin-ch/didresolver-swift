@@ -451,6 +451,11 @@ fileprivate struct FfiConverterString: FfiConverter {
 public protocol DidProtocol: AnyObject, Sendable {
     
     /**
+     * Returns the original DID string without fragment used to construct this DID object.
+     */
+    func asString()  -> String
+    
+    /**
      * Returns the HTTPS URL "transformed" (w.r.t. https://identity.foundation/didwebvh/next/#the-did-to-https-transformation)
      * from the DID supplied via constructor.
      */
@@ -578,6 +583,16 @@ public convenience init(did: String)throws  {
 
     
 
+    
+    /**
+     * Returns the original DID string without fragment used to construct this DID object.
+     */
+open func asString() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_didresolver_fn_method_did_as_string(self.uniffiClonePointer(),$0
+    )
+})
+}
     
     /**
      * Returns the HTTPS URL "transformed" (w.r.t. https://identity.foundation/didwebvh/next/#the-did-to-https-transformation)
@@ -982,6 +997,16 @@ extension DidResolveError: Foundation.LocalizedError {
 
 
 
+/**
+ * Constructs a DID from an absolute kid.
+ */
+public func getDidFromAbsoluteKid(absoluteKid: String)throws  -> Did  {
+    return try  FfiConverterTypeDid_lift(try rustCallWithError(FfiConverterTypeDidResolveError_lift) {
+    uniffi_didresolver_fn_func_get_did_from_absolute_kid(
+        FfiConverterString.lower(absoluteKid),$0
+    )
+})
+}
 
 private enum InitializationResult {
     case ok
@@ -997,6 +1022,12 @@ private let initializationResult: InitializationResult = {
     let scaffolding_contract_version = ffi_didresolver_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
+    }
+    if (uniffi_didresolver_checksum_func_get_did_from_absolute_kid() != 46619) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_didresolver_checksum_method_did_as_string() != 1976) {
+        return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_didresolver_checksum_method_did_get_https_url() != 30633) {
         return InitializationResult.apiChecksumMismatch
