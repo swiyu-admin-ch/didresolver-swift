@@ -352,19 +352,29 @@ private func uniffiTraitInterfaceCallWithError<T, E>(
         callStatus.pointee.errorBuf = FfiConverterString.lower(String(describing: error))
     }
 }
+// Initial value and increment amount for handles. 
+// These ensure that SWIFT handles always have the lowest bit set
+fileprivate let UNIFFI_HANDLEMAP_INITIAL: UInt64 = 1
+fileprivate let UNIFFI_HANDLEMAP_DELTA: UInt64 = 2
+
 fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
     // All mutation happens with this lock held, which is why we implement @unchecked Sendable.
     private let lock = NSLock()
     private var map: [UInt64: T] = [:]
-    private var currentHandle: UInt64 = 1
+    private var currentHandle: UInt64 = UNIFFI_HANDLEMAP_INITIAL
 
     func insert(obj: T) -> UInt64 {
         lock.withLock {
-            let handle = currentHandle
-            currentHandle += 1
-            map[handle] = obj
-            return handle
+            return doInsert(obj)
         }
+    }
+
+    // Low-level insert function, this assumes `lock` is held.
+    private func doInsert(_ obj: T) -> UInt64 {
+        let handle = currentHandle
+        currentHandle += UNIFFI_HANDLEMAP_DELTA
+        map[handle] = obj
+        return handle
     }
 
      func get(handle: UInt64) throws -> T {
@@ -373,6 +383,15 @@ fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
                 throw UniffiInternalError.unexpectedStaleHandle
             }
             return obj
+        }
+    }
+
+     func clone(handle: UInt64) throws -> UInt64 {
+        try lock.withLock {
+            guard let obj = map[handle] else {
+                throw UniffiInternalError.unexpectedStaleHandle
+            }
+            return doInsert(obj)
         }
     }
 
@@ -505,13 +524,13 @@ public protocol WebVerifiableHistoryProtocol: AnyObject, Sendable {
  * as specified by https://identity.foundation/didwebvh/v1.0/#read-resolve
  */
 open class WebVerifiableHistory: WebVerifiableHistoryProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -521,36 +540,37 @@ open class WebVerifiableHistory: WebVerifiableHistoryProtocol, @unchecked Sendab
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_did_webvh_fn_clone_webverifiablehistory(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_did_webvh_fn_clone_webverifiablehistory(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
             return
         }
 
-        try! rustCall { uniffi_did_webvh_fn_free_webverifiablehistory(pointer, $0) }
+        try! rustCall { uniffi_did_webvh_fn_free_webverifiablehistory(handle, $0) }
     }
 
     
@@ -576,7 +596,8 @@ public static func resolve(didWebvh: String, didLog: String)throws  -> WebVerifi
      */
 open func getDid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_did_webvh_fn_method_webverifiablehistory_get_did(self.uniffiClonePointer(),$0
+    uniffi_did_webvh_fn_method_webverifiablehistory_get_did(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -586,7 +607,8 @@ open func getDid() -> String  {
      */
 open func getDidDoc() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_did_webvh_fn_method_webverifiablehistory_get_did_doc(self.uniffiClonePointer(),$0
+    uniffi_did_webvh_fn_method_webverifiablehistory_get_did_doc(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -597,7 +619,8 @@ open func getDidDoc() -> String  {
      */
 open func getDidDocObjThreadSafe() -> DidDoc  {
     return try!  FfiConverterTypeDidDoc_lift(try! rustCall() {
-    uniffi_did_webvh_fn_method_webverifiablehistory_get_did_doc_obj_thread_safe(self.uniffiClonePointer(),$0
+    uniffi_did_webvh_fn_method_webverifiablehistory_get_did_doc_obj_thread_safe(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -607,7 +630,8 @@ open func getDidDocObjThreadSafe() -> DidDoc  {
      */
 open func getDidLog() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_did_webvh_fn_method_webverifiablehistory_get_did_log(self.uniffiClonePointer(),$0
+    uniffi_did_webvh_fn_method_webverifiablehistory_get_did_log(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -617,12 +641,14 @@ open func getDidLog() -> String  {
      */
 open func getDidMethodParameters() -> WebVerifiableHistoryDidMethodParameters  {
     return try!  FfiConverterTypeWebVerifiableHistoryDidMethodParameters_lift(try! rustCall() {
-    uniffi_did_webvh_fn_method_webverifiablehistory_get_did_method_parameters(self.uniffiClonePointer(),$0
+    uniffi_did_webvh_fn_method_webverifiablehistory_get_did_method_parameters(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
     
 
+    
 }
 
 
@@ -630,33 +656,24 @@ open func getDidMethodParameters() -> WebVerifiableHistoryDidMethodParameters  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeWebVerifiableHistory: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = WebVerifiableHistory
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> WebVerifiableHistory {
-        return WebVerifiableHistory(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> WebVerifiableHistory {
+        return WebVerifiableHistory(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: WebVerifiableHistory) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: WebVerifiableHistory) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> WebVerifiableHistory {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: WebVerifiableHistory, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -664,14 +681,14 @@ public struct FfiConverterTypeWebVerifiableHistory: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeWebVerifiableHistory_lift(_ pointer: UnsafeMutableRawPointer) throws -> WebVerifiableHistory {
-    return try FfiConverterTypeWebVerifiableHistory.lift(pointer)
+public func FfiConverterTypeWebVerifiableHistory_lift(_ handle: UInt64) throws -> WebVerifiableHistory {
+    return try FfiConverterTypeWebVerifiableHistory.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeWebVerifiableHistory_lower(_ value: WebVerifiableHistory) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeWebVerifiableHistory_lower(_ value: WebVerifiableHistory) -> UInt64 {
     return FfiConverterTypeWebVerifiableHistory.lower(value)
 }
 
@@ -699,13 +716,13 @@ public protocol WebVerifiableHistoryDidMethodParametersProtocol: AnyObject, Send
     
 }
 open class WebVerifiableHistoryDidMethodParameters: WebVerifiableHistoryDidMethodParametersProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -715,36 +732,37 @@ open class WebVerifiableHistoryDidMethodParameters: WebVerifiableHistoryDidMetho
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_did_webvh_fn_clone_webverifiablehistorydidmethodparameters(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_did_webvh_fn_clone_webverifiablehistorydidmethodparameters(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
             return
         }
 
-        try! rustCall { uniffi_did_webvh_fn_free_webverifiablehistorydidmethodparameters(pointer, $0) }
+        try! rustCall { uniffi_did_webvh_fn_free_webverifiablehistorydidmethodparameters(handle, $0) }
     }
 
     
@@ -755,7 +773,8 @@ open class WebVerifiableHistoryDidMethodParameters: WebVerifiableHistoryDidMetho
      */
 open func getScid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_did_webvh_fn_method_webverifiablehistorydidmethodparameters_get_scid(self.uniffiClonePointer(),$0
+    uniffi_did_webvh_fn_method_webverifiablehistorydidmethodparameters_get_scid(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -765,7 +784,8 @@ open func getScid() -> String  {
      */
 open func getUpdateKeys() -> [String]  {
     return try!  FfiConverterSequenceString.lift(try! rustCall() {
-    uniffi_did_webvh_fn_method_webverifiablehistorydidmethodparameters_get_update_keys(self.uniffiClonePointer(),$0
+    uniffi_did_webvh_fn_method_webverifiablehistorydidmethodparameters_get_update_keys(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -775,12 +795,14 @@ open func getUpdateKeys() -> [String]  {
      */
 open func isDeactivated() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
-    uniffi_did_webvh_fn_method_webverifiablehistorydidmethodparameters_is_deactivated(self.uniffiClonePointer(),$0
+    uniffi_did_webvh_fn_method_webverifiablehistorydidmethodparameters_is_deactivated(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
     
 
+    
 }
 
 
@@ -788,33 +810,24 @@ open func isDeactivated() -> Bool  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeWebVerifiableHistoryDidMethodParameters: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = WebVerifiableHistoryDidMethodParameters
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> WebVerifiableHistoryDidMethodParameters {
-        return WebVerifiableHistoryDidMethodParameters(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> WebVerifiableHistoryDidMethodParameters {
+        return WebVerifiableHistoryDidMethodParameters(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: WebVerifiableHistoryDidMethodParameters) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: WebVerifiableHistoryDidMethodParameters) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> WebVerifiableHistoryDidMethodParameters {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: WebVerifiableHistoryDidMethodParameters, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -822,14 +835,14 @@ public struct FfiConverterTypeWebVerifiableHistoryDidMethodParameters: FfiConver
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeWebVerifiableHistoryDidMethodParameters_lift(_ pointer: UnsafeMutableRawPointer) throws -> WebVerifiableHistoryDidMethodParameters {
-    return try FfiConverterTypeWebVerifiableHistoryDidMethodParameters.lift(pointer)
+public func FfiConverterTypeWebVerifiableHistoryDidMethodParameters_lift(_ handle: UInt64) throws -> WebVerifiableHistoryDidMethodParameters {
+    return try FfiConverterTypeWebVerifiableHistoryDidMethodParameters.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeWebVerifiableHistoryDidMethodParameters_lower(_ value: WebVerifiableHistoryDidMethodParameters) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeWebVerifiableHistoryDidMethodParameters_lower(_ value: WebVerifiableHistoryDidMethodParameters) -> UInt64 {
     return FfiConverterTypeWebVerifiableHistoryDidMethodParameters.lower(value)
 }
 
@@ -864,13 +877,13 @@ public protocol WebVerifiableHistoryIdProtocol: AnyObject, Sendable {
  * and a fully qualified domain name (with an optional path) that is secured by a TLS/SSL certificate."
  */
 open class WebVerifiableHistoryId: WebVerifiableHistoryIdProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -880,36 +893,37 @@ open class WebVerifiableHistoryId: WebVerifiableHistoryIdProtocol, @unchecked Se
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_did_webvh_fn_clone_webverifiablehistoryid(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_did_webvh_fn_clone_webverifiablehistoryid(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
             return
         }
 
-        try! rustCall { uniffi_did_webvh_fn_free_webverifiablehistoryid(pointer, $0) }
+        try! rustCall { uniffi_did_webvh_fn_free_webverifiablehistoryid(handle, $0) }
     }
 
     
@@ -933,7 +947,8 @@ public static func parseDidWebvh(didWebvh: String)throws  -> WebVerifiableHistor
      */
 open func getScid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_did_webvh_fn_method_webverifiablehistoryid_get_scid(self.uniffiClonePointer(),$0
+    uniffi_did_webvh_fn_method_webverifiablehistoryid_get_scid(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -943,12 +958,14 @@ open func getScid() -> String  {
      */
 open func getUrl() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_did_webvh_fn_method_webverifiablehistoryid_get_url(self.uniffiClonePointer(),$0
+    uniffi_did_webvh_fn_method_webverifiablehistoryid_get_url(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
     
 
+    
 }
 
 
@@ -956,33 +973,24 @@ open func getUrl() -> String  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeWebVerifiableHistoryId: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = WebVerifiableHistoryId
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> WebVerifiableHistoryId {
-        return WebVerifiableHistoryId(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> WebVerifiableHistoryId {
+        return WebVerifiableHistoryId(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: WebVerifiableHistoryId) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: WebVerifiableHistoryId) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> WebVerifiableHistoryId {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: WebVerifiableHistoryId, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -990,14 +998,14 @@ public struct FfiConverterTypeWebVerifiableHistoryId: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeWebVerifiableHistoryId_lift(_ pointer: UnsafeMutableRawPointer) throws -> WebVerifiableHistoryId {
-    return try FfiConverterTypeWebVerifiableHistoryId.lift(pointer)
+public func FfiConverterTypeWebVerifiableHistoryId_lift(_ handle: UInt64) throws -> WebVerifiableHistoryId {
+    return try FfiConverterTypeWebVerifiableHistoryId.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeWebVerifiableHistoryId_lower(_ value: WebVerifiableHistoryId) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeWebVerifiableHistoryId_lower(_ value: WebVerifiableHistoryId) -> UInt64 {
     return FfiConverterTypeWebVerifiableHistoryId.lower(value)
 }
 
@@ -1011,7 +1019,7 @@ public func FfiConverterTypeWebVerifiableHistoryId_lower(_ value: WebVerifiableH
  * # CAUTION The single currently supported `didwebvh` specification version is: v1.0
  */
 
-public enum WebVerifiableHistoryDidLogEntryJsonSchema {
+public enum WebVerifiableHistoryDidLogEntryJsonSchema: Equatable, Hashable {
     
     /**
      * As defined by https://identity.foundation/didwebvh/v1.0 but w.r.t. (eID-conformity) addendum:
@@ -1023,8 +1031,12 @@ public enum WebVerifiableHistoryDidLogEntryJsonSchema {
      * As (strictly) specified by https://identity.foundation/didwebvh/v1.0
      */
     case v10
-}
 
+
+
+
+
+}
 
 #if compiler(>=6)
 extension WebVerifiableHistoryDidLogEntryJsonSchema: Sendable {}
@@ -1079,19 +1091,12 @@ public func FfiConverterTypeWebVerifiableHistoryDidLogEntryJsonSchema_lower(_ va
 }
 
 
-extension WebVerifiableHistoryDidLogEntryJsonSchema: Equatable, Hashable {}
-
-
-
-
-
-
 
 /**
  * The error accompanying `WebVerifiableHistoryId`.
  * It might occur while calling `WebVerifiableHistoryId` methods.
  */
-public enum WebVerifiableHistoryIdResolutionError: Swift.Error {
+public enum WebVerifiableHistoryIdResolutionError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
@@ -1105,8 +1110,21 @@ public enum WebVerifiableHistoryIdResolutionError: Swift.Error {
      */
     case InvalidMethodSpecificId(message: String)
     
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
 }
 
+#if compiler(>=6)
+extension WebVerifiableHistoryIdResolutionError: Sendable {}
+#endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1165,21 +1183,6 @@ public func FfiConverterTypeWebVerifiableHistoryIdResolutionError_lower(_ value:
     return FfiConverterTypeWebVerifiableHistoryIdResolutionError.lower(value)
 }
 
-
-extension WebVerifiableHistoryIdResolutionError: Equatable, Hashable {}
-
-
-
-
-extension WebVerifiableHistoryIdResolutionError: Foundation.LocalizedError {
-    public var errorDescription: String? {
-        String(reflecting: self)
-    }
-}
-
-
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -1214,40 +1217,40 @@ private enum InitializationResult {
 // the code inside is only computed once.
 private let initializationResult: InitializationResult = {
     // Get the bindings contract version from our ComponentInterface
-    let bindings_contract_version = 29
+    let bindings_contract_version = 30
     // Get the scaffolding contract version by calling the into the dylib
     let scaffolding_contract_version = ffi_did_webvh_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_did_webvh_checksum_method_webverifiablehistory_get_did() != 22238) {
+    if (uniffi_did_webvh_checksum_method_webverifiablehistory_get_did() != 18267) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_webvh_checksum_method_webverifiablehistory_get_did_doc() != 10530) {
+    if (uniffi_did_webvh_checksum_method_webverifiablehistory_get_did_doc() != 7820) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_webvh_checksum_method_webverifiablehistory_get_did_doc_obj_thread_safe() != 55651) {
+    if (uniffi_did_webvh_checksum_method_webverifiablehistory_get_did_doc_obj_thread_safe() != 50174) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_webvh_checksum_method_webverifiablehistory_get_did_log() != 45523) {
+    if (uniffi_did_webvh_checksum_method_webverifiablehistory_get_did_log() != 62763) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_webvh_checksum_method_webverifiablehistory_get_did_method_parameters() != 9579) {
+    if (uniffi_did_webvh_checksum_method_webverifiablehistory_get_did_method_parameters() != 27913) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_webvh_checksum_method_webverifiablehistorydidmethodparameters_get_scid() != 38683) {
+    if (uniffi_did_webvh_checksum_method_webverifiablehistorydidmethodparameters_get_scid() != 26418) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_webvh_checksum_method_webverifiablehistorydidmethodparameters_get_update_keys() != 1294) {
+    if (uniffi_did_webvh_checksum_method_webverifiablehistorydidmethodparameters_get_update_keys() != 2362) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_webvh_checksum_method_webverifiablehistorydidmethodparameters_is_deactivated() != 55556) {
+    if (uniffi_did_webvh_checksum_method_webverifiablehistorydidmethodparameters_is_deactivated() != 31397) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_webvh_checksum_method_webverifiablehistoryid_get_scid() != 13368) {
+    if (uniffi_did_webvh_checksum_method_webverifiablehistoryid_get_scid() != 61206) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_webvh_checksum_method_webverifiablehistoryid_get_url() != 60113) {
+    if (uniffi_did_webvh_checksum_method_webverifiablehistoryid_get_url() != 8017) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_webvh_checksum_constructor_webverifiablehistory_resolve() != 35941) {

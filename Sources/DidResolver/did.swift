@@ -352,19 +352,29 @@ private func uniffiTraitInterfaceCallWithError<T, E>(
         callStatus.pointee.errorBuf = FfiConverterString.lower(String(describing: error))
     }
 }
+// Initial value and increment amount for handles. 
+// These ensure that SWIFT handles always have the lowest bit set
+fileprivate let UNIFFI_HANDLEMAP_INITIAL: UInt64 = 1
+fileprivate let UNIFFI_HANDLEMAP_DELTA: UInt64 = 2
+
 fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
     // All mutation happens with this lock held, which is why we implement @unchecked Sendable.
     private let lock = NSLock()
     private var map: [UInt64: T] = [:]
-    private var currentHandle: UInt64 = 1
+    private var currentHandle: UInt64 = UNIFFI_HANDLEMAP_INITIAL
 
     func insert(obj: T) -> UInt64 {
         lock.withLock {
-            let handle = currentHandle
-            currentHandle += 1
-            map[handle] = obj
-            return handle
+            return doInsert(obj)
         }
+    }
+
+    // Low-level insert function, this assumes `lock` is held.
+    private func doInsert(_ obj: T) -> UInt64 {
+        let handle = currentHandle
+        currentHandle += UNIFFI_HANDLEMAP_DELTA
+        map[handle] = obj
+        return handle
     }
 
      func get(handle: UInt64) throws -> T {
@@ -373,6 +383,15 @@ fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
                 throw UniffiInternalError.unexpectedStaleHandle
             }
             return obj
+        }
+    }
+
+     func clone(handle: UInt64) throws -> UInt64 {
+        try lock.withLock {
+            guard let obj = map[handle] else {
+                throw UniffiInternalError.unexpectedStaleHandle
+            }
+            return doInsert(obj)
         }
     }
 
@@ -514,13 +533,13 @@ public protocol DidProtocol: AnyObject, Sendable {
  * Also, the legacy DID method `did:tdw` is supported as well.
  */
 open class Did: DidProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -530,27 +549,27 @@ open class Did: DidProtocol, @unchecked Sendable {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_didresolver_fn_clone_did(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_didresolver_fn_clone_did(self.handle, $0) }
     }
     /**
      * The single constructor of `Did` expecting a
@@ -564,21 +583,22 @@ open class Did: DidProtocol, @unchecked Sendable {
      * object features all the detailed information required to narrow down the root cause.
      */
 public convenience init(did: String)throws  {
-    let pointer =
+    let handle =
         try rustCallWithError(FfiConverterTypeDidResolveError_lift) {
     uniffi_didresolver_fn_constructor_did_new(
         FfiConverterString.lower(did),$0
     )
 }
-    self.init(unsafeFromRawPointer: pointer)
+    self.init(unsafeFromHandle: handle)
 }
 
     deinit {
-        guard let pointer = pointer else {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
             return
         }
 
-        try! rustCall { uniffi_didresolver_fn_free_did(pointer, $0) }
+        try! rustCall { uniffi_didresolver_fn_free_did(handle, $0) }
     }
 
     
@@ -589,7 +609,8 @@ public convenience init(did: String)throws  {
      */
 open func asString() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_didresolver_fn_method_did_as_string(self.uniffiClonePointer(),$0
+    uniffi_didresolver_fn_method_did_as_string(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -600,7 +621,8 @@ open func asString() -> String  {
      */
 open func getHttpsUrl() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_didresolver_fn_method_did_get_https_url(self.uniffiClonePointer(),$0
+    uniffi_didresolver_fn_method_did_get_https_url(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -610,7 +632,8 @@ open func getHttpsUrl() -> String  {
      */
 open func getMethod() -> DidMethod  {
     return try!  FfiConverterTypeDidMethod_lift(try! rustCall() {
-    uniffi_didresolver_fn_method_did_get_method(self.uniffiClonePointer(),$0
+    uniffi_didresolver_fn_method_did_get_method(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -620,7 +643,8 @@ open func getMethod() -> DidMethod  {
      */
 open func getScid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_didresolver_fn_method_did_get_scid(self.uniffiClonePointer(),$0
+    uniffi_didresolver_fn_method_did_get_scid(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -633,7 +657,8 @@ open func getScid() -> String  {
      */
 open func getUrl()throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDidResolveError_lift) {
-    uniffi_didresolver_fn_method_did_get_url(self.uniffiClonePointer(),$0
+    uniffi_didresolver_fn_method_did_get_url(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -650,7 +675,8 @@ open func getUrl()throws  -> String  {
      */
 open func resolve(didLog: String)throws  -> DidDoc  {
     return try  FfiConverterTypeDidDoc_lift(try rustCallWithError(FfiConverterTypeDidResolveError_lift) {
-    uniffi_didresolver_fn_method_did_resolve(self.uniffiClonePointer(),
+    uniffi_didresolver_fn_method_did_resolve(
+            self.uniffiCloneHandle(),
         FfiConverterString.lower(didLog),$0
     )
 })
@@ -670,13 +696,15 @@ open func resolve(didLog: String)throws  -> DidDoc  {
      */
 open func resolveAll(didLog: String)throws  -> DidDocExtended  {
     return try  FfiConverterTypeDidDocExtended_lift(try rustCallWithError(FfiConverterTypeDidResolveError_lift) {
-    uniffi_didresolver_fn_method_did_resolve_all(self.uniffiClonePointer(),
+    uniffi_didresolver_fn_method_did_resolve_all(
+            self.uniffiCloneHandle(),
         FfiConverterString.lower(didLog),$0
     )
 })
 }
     
 
+    
 }
 
 
@@ -684,33 +712,24 @@ open func resolveAll(didLog: String)throws  -> DidDocExtended  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeDid: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = Did
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> Did {
-        return Did(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> Did {
+        return Did(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: Did) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: Did) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Did {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: Did, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -718,14 +737,14 @@ public struct FfiConverterTypeDid: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeDid_lift(_ pointer: UnsafeMutableRawPointer) throws -> Did {
-    return try FfiConverterTypeDid.lift(pointer)
+public func FfiConverterTypeDid_lift(_ handle: UInt64) throws -> Did {
+    return try FfiConverterTypeDid.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeDid_lower(_ value: Did) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeDid_lower(_ value: Did) -> UInt64 {
     return FfiConverterTypeDid.lower(value)
 }
 
@@ -734,15 +753,19 @@ public func FfiConverterTypeDid_lower(_ value: Did) -> UnsafeMutableRawPointer {
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
-public enum DidMethod {
+public enum DidMethod: Equatable, Hashable {
     
     case tdw(scid: String, httpsUrl: String
     )
     case webvh(scid: String, httpsUrl: String
     )
     case unknown
-}
 
+
+
+
+
+}
 
 #if compiler(>=6)
 extension DidMethod: Sendable {}
@@ -809,19 +832,12 @@ public func FfiConverterTypeDidMethod_lower(_ value: DidMethod) -> RustBuffer {
 }
 
 
-extension DidMethod: Equatable, Hashable {}
-
-
-
-
-
-
 
 /**
  * The error accompanying `Did`.
  * It might occur while calling some of the `Did` constructors/methods.
  */
-public enum DidResolveError: Swift.Error {
+public enum DidResolveError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
@@ -875,8 +891,21 @@ public enum DidResolveError: Swift.Error {
      */
     case InvalidDataIntegrityProof(message: String)
     
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
 }
 
+#if compiler(>=6)
+extension DidResolveError: Sendable {}
+#endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -982,21 +1011,6 @@ public func FfiConverterTypeDidResolveError_lift(_ buf: RustBuffer) throws -> Di
 public func FfiConverterTypeDidResolveError_lower(_ value: DidResolveError) -> RustBuffer {
     return FfiConverterTypeDidResolveError.lower(value)
 }
-
-
-extension DidResolveError: Equatable, Hashable {}
-
-
-
-
-extension DidResolveError: Foundation.LocalizedError {
-    public var errorDescription: String? {
-        String(reflecting: self)
-    }
-}
-
-
-
 /**
  * Constructs a DID from an absolute kid.
  */
@@ -1017,7 +1031,7 @@ private enum InitializationResult {
 // the code inside is only computed once.
 private let initializationResult: InitializationResult = {
     // Get the bindings contract version from our ComponentInterface
-    let bindings_contract_version = 29
+    let bindings_contract_version = 30
     // Get the scaffolding contract version by calling the into the dylib
     let scaffolding_contract_version = ffi_didresolver_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
@@ -1026,25 +1040,25 @@ private let initializationResult: InitializationResult = {
     if (uniffi_didresolver_checksum_func_get_did_from_absolute_kid() != 46619) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_didresolver_checksum_method_did_as_string() != 1976) {
+    if (uniffi_didresolver_checksum_method_did_as_string() != 56003) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_didresolver_checksum_method_did_get_https_url() != 30633) {
+    if (uniffi_didresolver_checksum_method_did_get_https_url() != 48880) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_didresolver_checksum_method_did_get_method() != 11228) {
+    if (uniffi_didresolver_checksum_method_did_get_method() != 2160) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_didresolver_checksum_method_did_get_scid() != 60645) {
+    if (uniffi_didresolver_checksum_method_did_get_scid() != 60094) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_didresolver_checksum_method_did_get_url() != 12137) {
+    if (uniffi_didresolver_checksum_method_did_get_url() != 21814) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_didresolver_checksum_method_did_resolve() != 7445) {
+    if (uniffi_didresolver_checksum_method_did_resolve() != 15368) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_didresolver_checksum_method_did_resolve_all() != 4445) {
+    if (uniffi_didresolver_checksum_method_did_resolve_all() != 6137) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_didresolver_checksum_constructor_did_new() != 33055) {
