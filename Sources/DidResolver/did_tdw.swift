@@ -352,19 +352,29 @@ private func uniffiTraitInterfaceCallWithError<T, E>(
         callStatus.pointee.errorBuf = FfiConverterString.lower(String(describing: error))
     }
 }
+// Initial value and increment amount for handles. 
+// These ensure that SWIFT handles always have the lowest bit set
+fileprivate let UNIFFI_HANDLEMAP_INITIAL: UInt64 = 1
+fileprivate let UNIFFI_HANDLEMAP_DELTA: UInt64 = 2
+
 fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
     // All mutation happens with this lock held, which is why we implement @unchecked Sendable.
     private let lock = NSLock()
     private var map: [UInt64: T] = [:]
-    private var currentHandle: UInt64 = 1
+    private var currentHandle: UInt64 = UNIFFI_HANDLEMAP_INITIAL
 
     func insert(obj: T) -> UInt64 {
         lock.withLock {
-            let handle = currentHandle
-            currentHandle += 1
-            map[handle] = obj
-            return handle
+            return doInsert(obj)
         }
+    }
+
+    // Low-level insert function, this assumes `lock` is held.
+    private func doInsert(_ obj: T) -> UInt64 {
+        let handle = currentHandle
+        currentHandle += UNIFFI_HANDLEMAP_DELTA
+        map[handle] = obj
+        return handle
     }
 
      func get(handle: UInt64) throws -> T {
@@ -373,6 +383,15 @@ fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
                 throw UniffiInternalError.unexpectedStaleHandle
             }
             return obj
+        }
+    }
+
+     func clone(handle: UInt64) throws -> UInt64 {
+        try lock.withLock {
+            guard let obj = map[handle] else {
+                throw UniffiInternalError.unexpectedStaleHandle
+            }
+            return doInsert(obj)
         }
     }
 
@@ -486,13 +505,13 @@ public protocol TrustDidWebProtocol: AnyObject, Sendable {
     
 }
 open class TrustDidWeb: TrustDidWebProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -502,36 +521,37 @@ open class TrustDidWeb: TrustDidWebProtocol, @unchecked Sendable {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_did_tdw_fn_clone_trustdidweb(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_did_tdw_fn_clone_trustdidweb(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
             return
         }
 
-        try! rustCall { uniffi_did_tdw_fn_free_trustdidweb(pointer, $0) }
+        try! rustCall { uniffi_did_tdw_fn_free_trustdidweb(handle, $0) }
     }
 
     
@@ -571,14 +591,16 @@ public static func resolve(didTdw: String, didLog: String)throws  -> TrustDidWeb
     
 open func getDid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_did_tdw_fn_method_trustdidweb_get_did(self.uniffiClonePointer(),$0
+    uniffi_did_tdw_fn_method_trustdidweb_get_did(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
     
 open func getDidDoc() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_did_tdw_fn_method_trustdidweb_get_did_doc(self.uniffiClonePointer(),$0
+    uniffi_did_tdw_fn_method_trustdidweb_get_did_doc(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -589,14 +611,16 @@ open func getDidDoc() -> String  {
      */
 open func getDidDocObjThreadSafe() -> DidDoc  {
     return try!  FfiConverterTypeDidDoc_lift(try! rustCall() {
-    uniffi_did_tdw_fn_method_trustdidweb_get_did_doc_obj_thread_safe(self.uniffiClonePointer(),$0
+    uniffi_did_tdw_fn_method_trustdidweb_get_did_doc_obj_thread_safe(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
     
 open func getDidLog() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_did_tdw_fn_method_trustdidweb_get_did_log(self.uniffiClonePointer(),$0
+    uniffi_did_tdw_fn_method_trustdidweb_get_did_log(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -606,12 +630,14 @@ open func getDidLog() -> String  {
      */
 open func getDidMethodParameters() -> TrustDidWebDidMethodParameters  {
     return try!  FfiConverterTypeTrustDidWebDidMethodParameters_lift(try! rustCall() {
-    uniffi_did_tdw_fn_method_trustdidweb_get_did_method_parameters(self.uniffiClonePointer(),$0
+    uniffi_did_tdw_fn_method_trustdidweb_get_did_method_parameters(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
     
 
+    
 }
 
 
@@ -619,33 +645,24 @@ open func getDidMethodParameters() -> TrustDidWebDidMethodParameters  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeTrustDidWeb: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = TrustDidWeb
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> TrustDidWeb {
-        return TrustDidWeb(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> TrustDidWeb {
+        return TrustDidWeb(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: TrustDidWeb) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: TrustDidWeb) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TrustDidWeb {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: TrustDidWeb, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -653,14 +670,14 @@ public struct FfiConverterTypeTrustDidWeb: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeTrustDidWeb_lift(_ pointer: UnsafeMutableRawPointer) throws -> TrustDidWeb {
-    return try FfiConverterTypeTrustDidWeb.lift(pointer)
+public func FfiConverterTypeTrustDidWeb_lift(_ handle: UInt64) throws -> TrustDidWeb {
+    return try FfiConverterTypeTrustDidWeb.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeTrustDidWeb_lower(_ value: TrustDidWeb) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeTrustDidWeb_lower(_ value: TrustDidWeb) -> UInt64 {
     return FfiConverterTypeTrustDidWeb.lower(value)
 }
 
@@ -688,13 +705,13 @@ public protocol TrustDidWebDidMethodParametersProtocol: AnyObject, Sendable {
     
 }
 open class TrustDidWebDidMethodParameters: TrustDidWebDidMethodParametersProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -704,36 +721,37 @@ open class TrustDidWebDidMethodParameters: TrustDidWebDidMethodParametersProtoco
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_did_tdw_fn_clone_trustdidwebdidmethodparameters(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_did_tdw_fn_clone_trustdidwebdidmethodparameters(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
             return
         }
 
-        try! rustCall { uniffi_did_tdw_fn_free_trustdidwebdidmethodparameters(pointer, $0) }
+        try! rustCall { uniffi_did_tdw_fn_free_trustdidwebdidmethodparameters(handle, $0) }
     }
 
     
@@ -744,7 +762,8 @@ open class TrustDidWebDidMethodParameters: TrustDidWebDidMethodParametersProtoco
      */
 open func getScid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_did_tdw_fn_method_trustdidwebdidmethodparameters_get_scid(self.uniffiClonePointer(),$0
+    uniffi_did_tdw_fn_method_trustdidwebdidmethodparameters_get_scid(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -754,7 +773,8 @@ open func getScid() -> String  {
      */
 open func getUpdateKeys() -> [String]  {
     return try!  FfiConverterSequenceString.lift(try! rustCall() {
-    uniffi_did_tdw_fn_method_trustdidwebdidmethodparameters_get_update_keys(self.uniffiClonePointer(),$0
+    uniffi_did_tdw_fn_method_trustdidwebdidmethodparameters_get_update_keys(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -764,12 +784,14 @@ open func getUpdateKeys() -> [String]  {
      */
 open func isDeactivated() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
-    uniffi_did_tdw_fn_method_trustdidwebdidmethodparameters_is_deactivated(self.uniffiClonePointer(),$0
+    uniffi_did_tdw_fn_method_trustdidwebdidmethodparameters_is_deactivated(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
     
 
+    
 }
 
 
@@ -777,33 +799,24 @@ open func isDeactivated() -> Bool  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeTrustDidWebDidMethodParameters: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = TrustDidWebDidMethodParameters
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> TrustDidWebDidMethodParameters {
-        return TrustDidWebDidMethodParameters(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> TrustDidWebDidMethodParameters {
+        return TrustDidWebDidMethodParameters(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: TrustDidWebDidMethodParameters) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: TrustDidWebDidMethodParameters) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TrustDidWebDidMethodParameters {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: TrustDidWebDidMethodParameters, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -811,14 +824,14 @@ public struct FfiConverterTypeTrustDidWebDidMethodParameters: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeTrustDidWebDidMethodParameters_lift(_ pointer: UnsafeMutableRawPointer) throws -> TrustDidWebDidMethodParameters {
-    return try FfiConverterTypeTrustDidWebDidMethodParameters.lift(pointer)
+public func FfiConverterTypeTrustDidWebDidMethodParameters_lift(_ handle: UInt64) throws -> TrustDidWebDidMethodParameters {
+    return try FfiConverterTypeTrustDidWebDidMethodParameters.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeTrustDidWebDidMethodParameters_lower(_ value: TrustDidWebDidMethodParameters) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeTrustDidWebDidMethodParameters_lower(_ value: TrustDidWebDidMethodParameters) -> UInt64 {
     return FfiConverterTypeTrustDidWebDidMethodParameters.lower(value)
 }
 
@@ -853,13 +866,13 @@ public protocol TrustDidWebIdProtocol: AnyObject, Sendable {
  * and a fully qualified domain name (with an optional path) that is secured by a TLS/SSL certificate."
  */
 open class TrustDidWebId: TrustDidWebIdProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -869,36 +882,37 @@ open class TrustDidWebId: TrustDidWebIdProtocol, @unchecked Sendable {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_did_tdw_fn_clone_trustdidwebid(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_did_tdw_fn_clone_trustdidwebid(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
+        if handle == 0 {
+            // Mock objects have handle=0 don't try to free them
             return
         }
 
-        try! rustCall { uniffi_did_tdw_fn_free_trustdidwebid(pointer, $0) }
+        try! rustCall { uniffi_did_tdw_fn_free_trustdidwebid(handle, $0) }
     }
 
     
@@ -922,7 +936,8 @@ public static func parseDidTdw(didTdw: String)throws  -> TrustDidWebId  {
      */
 open func getScid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_did_tdw_fn_method_trustdidwebid_get_scid(self.uniffiClonePointer(),$0
+    uniffi_did_tdw_fn_method_trustdidwebid_get_scid(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -932,12 +947,14 @@ open func getScid() -> String  {
      */
 open func getUrl() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
-    uniffi_did_tdw_fn_method_trustdidwebid_get_url(self.uniffiClonePointer(),$0
+    uniffi_did_tdw_fn_method_trustdidwebid_get_url(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
     
 
+    
 }
 
 
@@ -945,33 +962,24 @@ open func getUrl() -> String  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeTrustDidWebId: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = TrustDidWebId
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> TrustDidWebId {
-        return TrustDidWebId(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> TrustDidWebId {
+        return TrustDidWebId(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: TrustDidWebId) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: TrustDidWebId) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TrustDidWebId {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: TrustDidWebId, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -979,14 +987,14 @@ public struct FfiConverterTypeTrustDidWebId: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeTrustDidWebId_lift(_ pointer: UnsafeMutableRawPointer) throws -> TrustDidWebId {
-    return try FfiConverterTypeTrustDidWebId.lift(pointer)
+public func FfiConverterTypeTrustDidWebId_lift(_ handle: UInt64) throws -> TrustDidWebId {
+    return try FfiConverterTypeTrustDidWebId.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeTrustDidWebId_lower(_ value: TrustDidWebId) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeTrustDidWebId_lower(_ value: TrustDidWebId) -> UInt64 {
     return FfiConverterTypeTrustDidWebId.lower(value)
 }
 
@@ -1000,7 +1008,7 @@ public func FfiConverterTypeTrustDidWebId_lower(_ value: TrustDidWebId) -> Unsaf
  * # CAUTION The single currently supported `didwebvh` specification version is: v0.3
  */
 
-public enum TrustDidWebDidLogEntryJsonSchema {
+public enum TrustDidWebDidLogEntryJsonSchema: Equatable, Hashable {
     
     /**
      * As defined by https://identity.foundation/didwebvh/v0.3 but w.r.t. (eID-conformity) addendum:
@@ -1012,8 +1020,12 @@ public enum TrustDidWebDidLogEntryJsonSchema {
      * As (strictly) specified by https://identity.foundation/didwebvh/v0.3
      */
     case v03
-}
 
+
+
+
+
+}
 
 #if compiler(>=6)
 extension TrustDidWebDidLogEntryJsonSchema: Sendable {}
@@ -1068,19 +1080,12 @@ public func FfiConverterTypeTrustDidWebDidLogEntryJsonSchema_lower(_ value: Trus
 }
 
 
-extension TrustDidWebDidLogEntryJsonSchema: Equatable, Hashable {}
-
-
-
-
-
-
 
 /**
  * The error accompanying TrustDidWeb.
  * It might occur while calling TrustDidWeb methods.
  */
-public enum TrustDidWebError: Swift.Error {
+public enum TrustDidWebError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
@@ -1128,8 +1133,21 @@ public enum TrustDidWebError: Swift.Error {
      */
     case InvalidDataIntegrityProof(message: String)
     
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
 }
 
+#if compiler(>=6)
+extension TrustDidWebError: Sendable {}
+#endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1225,26 +1243,11 @@ public func FfiConverterTypeTrustDidWebError_lower(_ value: TrustDidWebError) ->
 }
 
 
-extension TrustDidWebError: Equatable, Hashable {}
-
-
-
-
-extension TrustDidWebError: Foundation.LocalizedError {
-    public var errorDescription: String? {
-        String(reflecting: self)
-    }
-}
-
-
-
-
-
 /**
  * The error accompanying `TrustDidWebId`.
  * It might occur while calling TrustDidWebId methods.
  */
-public enum TrustDidWebIdResolutionError: Swift.Error {
+public enum TrustDidWebIdResolutionError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
@@ -1258,8 +1261,21 @@ public enum TrustDidWebIdResolutionError: Swift.Error {
      */
     case InvalidMethodSpecificId(message: String)
     
+
+    
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
 }
 
+#if compiler(>=6)
+extension TrustDidWebIdResolutionError: Sendable {}
+#endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1318,21 +1334,6 @@ public func FfiConverterTypeTrustDidWebIdResolutionError_lower(_ value: TrustDid
     return FfiConverterTypeTrustDidWebIdResolutionError.lower(value)
 }
 
-
-extension TrustDidWebIdResolutionError: Equatable, Hashable {}
-
-
-
-
-extension TrustDidWebIdResolutionError: Foundation.LocalizedError {
-    public var errorDescription: String? {
-        String(reflecting: self)
-    }
-}
-
-
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -1367,40 +1368,40 @@ private enum InitializationResult {
 // the code inside is only computed once.
 private let initializationResult: InitializationResult = {
     // Get the bindings contract version from our ComponentInterface
-    let bindings_contract_version = 29
+    let bindings_contract_version = 30
     // Get the scaffolding contract version by calling the into the dylib
     let scaffolding_contract_version = ffi_did_tdw_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
-    if (uniffi_did_tdw_checksum_method_trustdidweb_get_did() != 28079) {
+    if (uniffi_did_tdw_checksum_method_trustdidweb_get_did() != 6952) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_tdw_checksum_method_trustdidweb_get_did_doc() != 2565) {
+    if (uniffi_did_tdw_checksum_method_trustdidweb_get_did_doc() != 9615) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_tdw_checksum_method_trustdidweb_get_did_doc_obj_thread_safe() != 18729) {
+    if (uniffi_did_tdw_checksum_method_trustdidweb_get_did_doc_obj_thread_safe() != 35984) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_tdw_checksum_method_trustdidweb_get_did_log() != 19642) {
+    if (uniffi_did_tdw_checksum_method_trustdidweb_get_did_log() != 51133) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_tdw_checksum_method_trustdidweb_get_did_method_parameters() != 63273) {
+    if (uniffi_did_tdw_checksum_method_trustdidweb_get_did_method_parameters() != 44701) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_tdw_checksum_method_trustdidwebdidmethodparameters_get_scid() != 14807) {
+    if (uniffi_did_tdw_checksum_method_trustdidwebdidmethodparameters_get_scid() != 33331) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_tdw_checksum_method_trustdidwebdidmethodparameters_get_update_keys() != 2992) {
+    if (uniffi_did_tdw_checksum_method_trustdidwebdidmethodparameters_get_update_keys() != 16990) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_tdw_checksum_method_trustdidwebdidmethodparameters_is_deactivated() != 63042) {
+    if (uniffi_did_tdw_checksum_method_trustdidwebdidmethodparameters_is_deactivated() != 48728) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_tdw_checksum_method_trustdidwebid_get_scid() != 48573) {
+    if (uniffi_did_tdw_checksum_method_trustdidwebid_get_scid() != 59181) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_tdw_checksum_method_trustdidwebid_get_url() != 44878) {
+    if (uniffi_did_tdw_checksum_method_trustdidwebid_get_url() != 42671) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_tdw_checksum_constructor_trustdidweb_read() != 22616) {
