@@ -5,7 +5,7 @@ let version = "2.8.0"
 let xcframework_name = "didresolver"
 let binary_target_url_github_owner = "swiyu-admin-ch"
 let binary_target_url_github_repo = "didresolver-swift"
-let checksum = "af9884d10afcbafbdcfc07a89e30349b0005faf72179e59745cdcfdc7f9a2f89"
+let checksum = "3720da9385ec60900286c399b8fc90d8d59e7f39c7a08e7c7217ae92aa1b6c7d"
 
 let package = Package(
     name: "DidResolver",
