@@ -7,6 +7,7 @@ let binary_target_url_github_owner = "swiyu-admin-ch"
 let binary_target_url_github_repo = "didresolver-swift"
 let checksum = "857e10c39e822b6e14235f8c74e254331bb0e0a2d2e181f4c4198dd5ce636460"
 
+
 let package = Package(
     name: "DidResolver",
     platforms: [.iOS(.v14)],
