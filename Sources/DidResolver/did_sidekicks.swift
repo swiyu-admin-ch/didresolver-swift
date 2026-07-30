@@ -7,8 +7,8 @@ import Foundation
 // Depending on the consumer's build setup, the low-level FFI code
 // might be in a separate module, or it might be compiled inline into
 // this module. This is a bit of light hackery to work with both.
-#if canImport(did_sidekicksFFI)
-import did_sidekicksFFI
+#if canImport(DidResolverFFI)
+import DidResolverFFI
 #endif
 
 fileprivate extension RustBuffer {
@@ -503,7 +503,11 @@ fileprivate struct FfiConverterString: FfiConverter {
             return String()
         }
         let bytes = UnsafeBufferPointer<UInt8>(start: value.data!, count: Int(value.len))
-        return String(bytes: bytes, encoding: String.Encoding.utf8)!
+        // Use Swift's native UTF-8 decoder; `String(bytes:encoding:.utf8)` goes
+        // through Foundation's NSString and silently strips a leading U+FEFF BOM.
+        // Invalid UTF-8 substitutes U+FFFD instead of trapping (unreachable
+        // given Rust's `String` invariant).
+        return String(decoding: bytes, as: UTF8.self)
     }
 
     public static func lower(_ value: String) -> RustBuffer {
@@ -519,7 +523,8 @@ fileprivate struct FfiConverterString: FfiConverter {
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> String {
         let len: Int32 = try readInt(&buf)
-        return String(bytes: try readBytes(&buf, count: Int(len)), encoding: String.Encoding.utf8)!
+        // See `lift` above for why we avoid Foundation's NSString-backed decoder here.
+        return String(decoding: try readBytes(&buf, count: Int(len)), as: UTF8.self)
     }
 
     public static func write(_ value: String, into buf: inout [UInt8]) {
@@ -814,6 +819,9 @@ public protocol DidDocProtocol: AnyObject, Sendable {
     
     func getCapabilityInvocation()  -> [VerificationMethod]
     
+    /**
+     * Deprecated
+     */
     func getContext()  -> [String]
     
     func getController()  -> String?
@@ -970,6 +978,9 @@ open func getCapabilityInvocation() -> [VerificationMethod]  {
 })
 }
     
+    /**
+     * Deprecated
+     */
 open func getContext() -> [String]  {
     return try!  FfiConverterSequenceString.lift(try! rustCall() {
     uniffi_did_sidekicks_fn_method_diddoc_get_context(
@@ -2361,6 +2372,20 @@ public func FfiConverterTypeEd25519SigningKey_lower(_ value: Ed25519SigningKey) 
 public protocol Ed25519VerifyingKeyProtocol: AnyObject, Sendable {
     
     /**
+     * Converts the VerifyingKey into a JWK.
+     *
+     * Example JWK: 
+     * ```json
+     * {
+     *     "kty": "OKP",
+     *     "crv": "Ed25519",
+     *     "x": "87Eihw4hpr8dKxzd-pJ1qV1sYZT0NlwnC1VL8btoJy0"
+     * }
+     * ```
+     */
+    func toJwk()  -> String
+    
+    /**
      * The multibase-encoding method, as specified by `Multikey` (https://www.w3.org/TR/controller-document/#Multikey):
      *
      * The encoding of an Ed25519 public key MUST start with the two-byte prefix 0xed01 (the varint expression of 0xed),
@@ -2462,6 +2487,29 @@ public static func fromMultibase(multibase: String)throws  -> Ed25519VerifyingKe
 }
     
     /**
+     * Deserialize JWK-encoded public key.
+     *
+     * The JWK is expected to contain the properties `kty`, `crv`, and `x`.
+     * Other properties are ignored.
+     *
+     * Example JWK: 
+     * ```json
+     * {
+     *     "kty": "OKP",
+     *     "crv": "Ed25519",
+     *     "x": "87Eihw4hpr8dKxzd-pJ1qV1sYZT0NlwnC1VL8btoJy0"
+     * }
+     * ```
+     */
+public static func fromPublicKeyJwk(publicKeyJwk: String)throws  -> Ed25519VerifyingKey  {
+    return try  FfiConverterTypeEd25519VerifyingKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+    uniffi_did_sidekicks_fn_constructor_ed25519verifyingkey_from_public_key_jwk(
+        FfiConverterString.lower(publicKeyJwk),$0
+    )
+})
+}
+    
+    /**
      * Deserialize PKCS#8-encoded public key from PEM.
      */
 public static func fromPublicKeyPem(publicKeyPem: String)throws  -> Ed25519VerifyingKey  {
@@ -2484,6 +2532,26 @@ public static func readPublicKeyPemFile(publicKeyPemFile: String)throws  -> Ed25
 }
     
 
+    
+    /**
+     * Converts the VerifyingKey into a JWK.
+     *
+     * Example JWK: 
+     * ```json
+     * {
+     *     "kty": "OKP",
+     *     "crv": "Ed25519",
+     *     "x": "87Eihw4hpr8dKxzd-pJ1qV1sYZT0NlwnC1VL8btoJy0"
+     * }
+     * ```
+     */
+open func toJwk() -> String  {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_did_sidekicks_fn_method_ed25519verifyingkey_to_jwk(
+            self.uniffiCloneHandle(),$0
+    )
+})
+}
     
     /**
      * The multibase-encoding method, as specified by `Multikey` (https://www.w3.org/TR/controller-document/#Multikey):
@@ -2958,16 +3026,20 @@ public struct Jwk: Equatable, Hashable {
     public var crv: String?
     public var x: String?
     public var y: String?
+    public var keyUse: String?
+    public var keyOps: [String]?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(alg: String?, kid: String?, kty: String?, crv: String?, x: String?, y: String?) {
+    public init(alg: String?, kid: String?, kty: String?, crv: String?, x: String?, y: String?, keyUse: String?, keyOps: [String]?) {
         self.alg = alg
         self.kid = kid
         self.kty = kty
         self.crv = crv
         self.x = x
         self.y = y
+        self.keyUse = keyUse
+        self.keyOps = keyOps
     }
 
     
@@ -2991,7 +3063,9 @@ public struct FfiConverterTypeJwk: FfiConverterRustBuffer {
                 kty: FfiConverterOptionString.read(from: &buf), 
                 crv: FfiConverterOptionString.read(from: &buf), 
                 x: FfiConverterOptionString.read(from: &buf), 
-                y: FfiConverterOptionString.read(from: &buf)
+                y: FfiConverterOptionString.read(from: &buf), 
+                keyUse: FfiConverterOptionString.read(from: &buf), 
+                keyOps: FfiConverterOptionSequenceString.read(from: &buf)
         )
     }
 
@@ -3002,6 +3076,8 @@ public struct FfiConverterTypeJwk: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.crv, into: &buf)
         FfiConverterOptionString.write(value.x, into: &buf)
         FfiConverterOptionString.write(value.y, into: &buf)
+        FfiConverterOptionString.write(value.keyUse, into: &buf)
+        FfiConverterOptionSequenceString.write(value.keyOps, into: &buf)
     }
 }
 
@@ -4053,6 +4129,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_method_ed25519signingkey_write_pkcs8_pem_file() != 26802) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_did_sidekicks_checksum_method_ed25519verifyingkey_to_jwk() != 55315) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_did_sidekicks_checksum_method_ed25519verifyingkey_to_multibase() != 6485) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -4111,6 +4190,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_constructor_ed25519verifyingkey_from_multibase() != 37951) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_did_sidekicks_checksum_constructor_ed25519verifyingkey_from_public_key_jwk() != 1598) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_constructor_ed25519verifyingkey_from_public_key_pem() != 64657) {
