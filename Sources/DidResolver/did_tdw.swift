@@ -39,6 +39,52 @@ fileprivate extension ForeignBytes {
     init(bufferPointer: UnsafeBufferPointer<UInt8>) {
         self.init(len: Int32(bufferPointer.count), data: bufferPointer.baseAddress)
     }
+
+    init(rawBufferPointer: UnsafeRawBufferPointer) {
+        self.init(
+            len: Int32(rawBufferPointer.count),
+            data: rawBufferPointer.baseAddress?.assumingMemoryBound(to: UInt8.self)
+        )
+    }
+}
+
+// Converter for `&[u8]` / `[ByRef] bytes` arguments.
+//
+// Conforms to `FfiConverter` so the compiler enforces the full converter
+// method set. Only the scope-bound `lower(_:_body:)` overload is sound —
+// zero-copy byte buffers only flow foreign -> Rust, and only in argument
+// position. The four protocol-witness methods (`lift`, `lower`, `read`,
+// `write`) `fatalError` at runtime if anyone reaches them.
+//
+// The scope-bound `lower` takes a closure because the `ForeignBytes`
+// pointer is only guaranteed valid for the duration of
+// `Data.withUnsafeBytes`. Callers must run the full FFI call inside
+// the closure body.
+fileprivate enum FfiConverterByRefBytes: FfiConverter {
+    typealias SwiftType = Data
+    typealias FfiType = ForeignBytes
+
+    static func lower<R>(_ value: Data, _ body: (ForeignBytes) throws -> R) rethrows -> R {
+        return try value.withUnsafeBytes { rawBuf in
+            try body(ForeignBytes(rawBufferPointer: rawBuf))
+        }
+    }
+
+    static func lower(_ value: Data) -> ForeignBytes {
+        fatalError("ByRef bytes cannot use the plain lower: returning ForeignBytes escapes the Data.withUnsafeBytes scope. Use the scope-bound lower(_:_body:) overload instead.")
+    }
+
+    static func lift(_ value: ForeignBytes) throws -> Data {
+        fatalError("ByRef bytes cannot be lifted: zero-copy &[u8] only flows foreign->Rust")
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+        fatalError("ByRef bytes cannot be read from a buffer: zero-copy &[u8] is only supported in argument position, not nested in records/options/etc.")
+    }
+
+    static func write(_ value: Data, into buf: inout [UInt8]) {
+        fatalError("ByRef bytes cannot be written to a buffer: zero-copy &[u8] is only supported in argument position, not nested in records/options/etc.")
+    }
 }
 
 // For every type used in the interface, we provide helper methods for conveniently
@@ -570,9 +616,10 @@ open class TrustDidWeb: TrustDidWebProtocol, @unchecked Sendable {
      */
 public static func read(didTdw: String, didLog: String)throws  -> TrustDidWeb  {
     return try  FfiConverterTypeTrustDidWeb_lift(try rustCallWithError(FfiConverterTypeTrustDidWebError_lift) {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_constructor_trustdidweb_read(
         FfiConverterString.lower(didTdw),
-        FfiConverterString.lower(didLog),$0
+        FfiConverterString.lower(didLog),uniffiCallStatus
     )
 })
 }
@@ -585,9 +632,10 @@ public static func read(didTdw: String, didLog: String)throws  -> TrustDidWeb  {
      */
 public static func resolve(didTdw: String, didLog: String)throws  -> TrustDidWeb  {
     return try  FfiConverterTypeTrustDidWeb_lift(try rustCallWithError(FfiConverterTypeDidResolverError_lift) {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_constructor_trustdidweb_resolve(
         FfiConverterString.lower(didTdw),
-        FfiConverterString.lower(didLog),$0
+        FfiConverterString.lower(didLog),uniffiCallStatus
     )
 })
 }
@@ -596,16 +644,18 @@ public static func resolve(didTdw: String, didLog: String)throws  -> TrustDidWeb
     
 open func getDid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_method_trustdidweb_get_did(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func getDidDoc() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_method_trustdidweb_get_did_doc(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -616,16 +666,18 @@ open func getDidDoc() -> String  {
      */
 open func getDidDocObjThreadSafe() -> DidDoc  {
     return try!  FfiConverterTypeDidDoc_lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_method_trustdidweb_get_did_doc_obj_thread_safe(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func getDidLog() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_method_trustdidweb_get_did_log(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -635,8 +687,9 @@ open func getDidLog() -> String  {
      */
 open func getDidMethodParameters() -> TrustDidWebDidMethodParameters  {
     return try!  FfiConverterTypeTrustDidWebDidMethodParameters_lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_method_trustdidweb_get_did_method_parameters(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -767,8 +820,9 @@ open class TrustDidWebDidMethodParameters: TrustDidWebDidMethodParametersProtoco
      */
 open func getScid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_method_trustdidwebdidmethodparameters_get_scid(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -778,8 +832,9 @@ open func getScid() -> String  {
      */
 open func getUpdateKeys() -> [String]  {
     return try!  FfiConverterSequenceString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_method_trustdidwebdidmethodparameters_get_update_keys(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -789,8 +844,9 @@ open func getUpdateKeys() -> [String]  {
      */
 open func isDeactivated() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_method_trustdidwebdidmethodparameters_is_deactivated(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -928,8 +984,9 @@ open class TrustDidWebId: TrustDidWebIdProtocol, @unchecked Sendable {
      */
 public static func parseDidTdw(didTdw: String)throws  -> TrustDidWebId  {
     return try  FfiConverterTypeTrustDidWebId_lift(try rustCallWithError(FfiConverterTypeTrustDidWebIdResolutionError_lift) {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_constructor_trustdidwebid_parse_did_tdw(
-        FfiConverterString.lower(didTdw),$0
+        FfiConverterString.lower(didTdw),uniffiCallStatus
     )
 })
 }
@@ -941,8 +998,9 @@ public static func parseDidTdw(didTdw: String)throws  -> TrustDidWebId  {
      */
 open func getScid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_method_trustdidwebid_get_scid(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -952,8 +1010,9 @@ open func getScid() -> String  {
      */
 open func getUrl() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_tdw_fn_method_trustdidwebid_get_url(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1005,8 +1064,7 @@ public func FfiConverterTypeTrustDidWebId_lower(_ value: TrustDidWebId) -> UInt6
 
 
 
-// Note that we don't yet support `indirect` for enums.
-// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 /**
  * W.r.t. corresponding specification version available at https://identity.foundation/didwebvh/v0.3
  *
@@ -1090,7 +1148,8 @@ public func FfiConverterTypeTrustDidWebDidLogEntryJsonSchema_lower(_ value: Trus
  * The error accompanying TrustDidWeb.
  * It might occur while calling TrustDidWeb methods.
  */
-public enum TrustDidWebError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+public 
+enum TrustDidWebError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
@@ -1252,7 +1311,8 @@ public func FfiConverterTypeTrustDidWebError_lower(_ value: TrustDidWebError) ->
  * The error accompanying `TrustDidWebId`.
  * It might occur while calling TrustDidWebId methods.
  */
-public enum TrustDidWebIdResolutionError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+public 
+enum TrustDidWebIdResolutionError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
@@ -1397,7 +1457,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_tdw_checksum_method_trustdidwebdidmethodparameters_get_scid() != 33331) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_tdw_checksum_method_trustdidwebdidmethodparameters_get_update_keys() != 16990) {
+    if (uniffi_did_tdw_checksum_method_trustdidwebdidmethodparameters_get_update_keys() != 39376) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_tdw_checksum_method_trustdidwebdidmethodparameters_is_deactivated() != 48728) {

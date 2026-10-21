@@ -39,6 +39,52 @@ fileprivate extension ForeignBytes {
     init(bufferPointer: UnsafeBufferPointer<UInt8>) {
         self.init(len: Int32(bufferPointer.count), data: bufferPointer.baseAddress)
     }
+
+    init(rawBufferPointer: UnsafeRawBufferPointer) {
+        self.init(
+            len: Int32(rawBufferPointer.count),
+            data: rawBufferPointer.baseAddress?.assumingMemoryBound(to: UInt8.self)
+        )
+    }
+}
+
+// Converter for `&[u8]` / `[ByRef] bytes` arguments.
+//
+// Conforms to `FfiConverter` so the compiler enforces the full converter
+// method set. Only the scope-bound `lower(_:_body:)` overload is sound —
+// zero-copy byte buffers only flow foreign -> Rust, and only in argument
+// position. The four protocol-witness methods (`lift`, `lower`, `read`,
+// `write`) `fatalError` at runtime if anyone reaches them.
+//
+// The scope-bound `lower` takes a closure because the `ForeignBytes`
+// pointer is only guaranteed valid for the duration of
+// `Data.withUnsafeBytes`. Callers must run the full FFI call inside
+// the closure body.
+fileprivate enum FfiConverterByRefBytes: FfiConverter {
+    typealias SwiftType = Data
+    typealias FfiType = ForeignBytes
+
+    static func lower<R>(_ value: Data, _ body: (ForeignBytes) throws -> R) rethrows -> R {
+        return try value.withUnsafeBytes { rawBuf in
+            try body(ForeignBytes(rawBufferPointer: rawBuf))
+        }
+    }
+
+    static func lower(_ value: Data) -> ForeignBytes {
+        fatalError("ByRef bytes cannot use the plain lower: returning ForeignBytes escapes the Data.withUnsafeBytes scope. Use the scope-bound lower(_:_body:) overload instead.")
+    }
+
+    static func lift(_ value: ForeignBytes) throws -> Data {
+        fatalError("ByRef bytes cannot be lifted: zero-copy &[u8] only flows foreign->Rust")
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+        fatalError("ByRef bytes cannot be read from a buffer: zero-copy &[u8] is only supported in argument position, not nested in records/options/etc.")
+    }
+
+    static func write(_ value: Data, into buf: inout [UInt8]) {
+        fatalError("ByRef bytes cannot be written to a buffer: zero-copy &[u8] is only supported in argument position, not nested in records/options/etc.")
+    }
 }
 
 // For every type used in the interface, we provide helper methods for conveniently
@@ -604,7 +650,8 @@ open class CryptoSuiteProofOptions: CryptoSuiteProofOptionsProtocol, @unchecked 
      */
 public static func build() -> CryptoSuiteProofOptions  {
     return try!  FfiConverterTypeCryptoSuiteProofOptions_lift(try! rustCall() {
-    uniffi_did_sidekicks_fn_constructor_cryptosuiteproofoptions_build($0
+        uniffiCallStatus in
+    uniffi_did_sidekicks_fn_constructor_cryptosuiteproofoptions_build(uniffiCallStatus
     )
 })
 }
@@ -616,12 +663,13 @@ public static func build() -> CryptoSuiteProofOptions  {
      */
 public static func newEddsaJcs2022(createdDtRfc3339: String?, verificationMethod: String, proofPurpose: String?, context: [String]?, challenge: String?)throws  -> CryptoSuiteProofOptions  {
     return try  FfiConverterTypeCryptoSuiteProofOptions_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_cryptosuiteproofoptions_new_eddsa_jcs_2022(
         FfiConverterOptionString.lower(createdDtRfc3339),
         FfiConverterString.lower(verificationMethod),
         FfiConverterOptionString.lower(proofPurpose),
         FfiConverterOptionSequenceString.lower(context),
-        FfiConverterOptionString.lower(challenge),$0
+        FfiConverterOptionString.lower(challenge),uniffiCallStatus
     )
 })
 }
@@ -751,8 +799,9 @@ open class DataIntegrityProof: DataIntegrityProofProtocol, @unchecked Sendable {
      */
 public static func fromJsonString(json: String)throws  -> DataIntegrityProof  {
     return try  FfiConverterTypeDataIntegrityProof_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_dataintegrityproof_from_json_string(
-        FfiConverterString.lower(json),$0
+        FfiConverterString.lower(json),uniffiCallStatus
     )
 })
 }
@@ -938,8 +987,9 @@ open class DidDoc: DidDocProtocol, @unchecked Sendable {
      */
 public static func fromJson(jsonContent: String)throws  -> DidDoc  {
     return try  FfiConverterTypeDidDoc_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_diddoc_from_json(
-        FfiConverterString.lower(jsonContent),$0
+        FfiConverterString.lower(jsonContent),uniffiCallStatus
     )
 })
 }
@@ -948,32 +998,36 @@ public static func fromJson(jsonContent: String)throws  -> DidDoc  {
     
 open func getAssertionMethod() -> [VerificationMethod]  {
     return try!  FfiConverterSequenceTypeVerificationMethod.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_assertion_method(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func getAuthentication() -> [VerificationMethod]  {
     return try!  FfiConverterSequenceTypeVerificationMethod.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_authentication(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func getCapabilityDelegation() -> [VerificationMethod]  {
     return try!  FfiConverterSequenceTypeVerificationMethod.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_capability_delegation(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func getCapabilityInvocation() -> [VerificationMethod]  {
     return try!  FfiConverterSequenceTypeVerificationMethod.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_capability_invocation(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -983,16 +1037,18 @@ open func getCapabilityInvocation() -> [VerificationMethod]  {
      */
 open func getContext() -> [String]  {
     return try!  FfiConverterSequenceString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_context(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func getController() -> String?  {
     return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_controller(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1003,16 +1059,18 @@ open func getController() -> String?  {
      */
 open func getDeactivated() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_deactivated(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func getId() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_id(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1027,9 +1085,10 @@ open func getId() -> String  {
      */
 open func getKey(keyId: String)throws  -> Jwk  {
     return try  FfiConverterTypeJwk_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_key(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(keyId),$0
+        FfiConverterString.lower(keyId),uniffiCallStatus
     )
 })
 }
@@ -1044,9 +1103,10 @@ open func getKey(keyId: String)throws  -> Jwk  {
      */
 open func getKeyByFragment(keyId: String)throws  -> Jwk  {
     return try  FfiConverterTypeJwk_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_key_by_fragment(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(keyId),$0
+        FfiConverterString.lower(keyId),uniffiCallStatus
     )
 })
 }
@@ -1062,25 +1122,28 @@ open func getKeyByFragment(keyId: String)throws  -> Jwk  {
      */
 open func getKeyByMethodId(keyId: String)throws  -> Jwk  {
     return try  FfiConverterTypeJwk_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_key_by_method_id(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(keyId),$0
+        FfiConverterString.lower(keyId),uniffiCallStatus
     )
 })
 }
     
 open func getProfileVersion() -> String?  {
     return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_profile_version(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func getVerificationMethod() -> [VerificationMethod]  {
     return try!  FfiConverterSequenceTypeVerificationMethod.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_get_verification_method(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1096,8 +1159,9 @@ open func getVerificationMethod() -> [VerificationMethod]  {
      */
 open func toJson()throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddoc_to_json(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1220,16 +1284,18 @@ open class DidDocExtended: DidDocExtendedProtocol, @unchecked Sendable {
     
 open func getDidDoc() -> DidDoc  {
     return try!  FfiConverterTypeDidDoc_lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddocextended_get_did_doc(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func getDidMethodParameters() -> [String: DidMethodParameter]  {
     return try!  FfiConverterDictionaryStringTypeDidMethodParameter.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_diddocextended_get_did_method_parameters(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1356,8 +1422,9 @@ open class DidLogEntryJsonSchema: DidLogEntryJsonSchemaProtocol, @unchecked Send
      */
 open func getJsonSchema() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didlogentryjsonschema_get_json_schema(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1496,8 +1563,9 @@ open class DidLogEntryValidator: DidLogEntryValidatorProtocol, @unchecked Sendab
      */
 public static func from(schema: DidLogEntryJsonSchema) -> DidLogEntryValidator  {
     return try!  FfiConverterTypeDidLogEntryValidator_lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_didlogentryvalidator_from(
-        FfiConverterTypeDidLogEntryJsonSchema_lower(schema),$0
+        FfiConverterTypeDidLogEntryJsonSchema_lower(schema),uniffiCallStatus
     )
 })
 }
@@ -1510,9 +1578,10 @@ public static func from(schema: DidLogEntryJsonSchema) -> DidLogEntryValidator  
      * `DidLogEntryValidatorError` is returned as soon the very first validation error occurs.
      */
 open func validate(instance: String)throws   {try rustCallWithError(FfiConverterTypeDidLogEntryValidatorError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didlogentryvalidator_validate(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(instance),$0
+        FfiConverterString.lower(instance),uniffiCallStatus
     )
 }
 }
@@ -1699,8 +1768,9 @@ open class DidMethodParameter: DidMethodParameterProtocol, @unchecked Sendable {
      */
 open func getBoolValue() -> Bool?  {
     return try!  FfiConverterOptionBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_get_bool_value(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1711,8 +1781,9 @@ open func getBoolValue() -> Bool?  {
      */
 open func getF64Value() -> Double?  {
     return try!  FfiConverterOptionDouble.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_get_f64_value(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1723,24 +1794,27 @@ open func getF64Value() -> Double?  {
      */
 open func getI64Value() -> Int64?  {
     return try!  FfiConverterOptionInt64.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_get_i64_value(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func getJsonText() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_get_json_text(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func getName() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_get_name(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1751,8 +1825,9 @@ open func getName() -> String  {
      */
 open func getStringArrayValue() -> [String]?  {
     return try!  FfiConverterOptionSequenceString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_get_string_array_value(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1763,8 +1838,9 @@ open func getStringArrayValue() -> [String]?  {
      */
 open func getStringValue() -> String?  {
     return try!  FfiConverterOptionString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_get_string_value(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1775,88 +1851,99 @@ open func getStringValue() -> String?  {
      */
 open func getU64Value() -> UInt64?  {
     return try!  FfiConverterOptionUInt64.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_get_u64_value(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func isArray() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_is_array(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func isBool() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_is_bool(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func isEmptyArray() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_is_empty_array(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func isF64() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_is_f64(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func isI64() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_is_i64(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func isNull() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_is_null(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func isObject() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_is_object(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func isString() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_is_string(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func isStringArray() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_is_string_array(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
     
 open func isU64() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_didmethodparameter_is_u64(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -2001,8 +2088,9 @@ open class Ed25519Signature: Ed25519SignatureProtocol, @unchecked Sendable {
      */
 public static func fromHex(hexEncoded: String)throws  -> Ed25519Signature  {
     return try  FfiConverterTypeEd25519Signature_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_ed25519signature_from_hex(
-        FfiConverterString.lower(hexEncoded),$0
+        FfiConverterString.lower(hexEncoded),uniffiCallStatus
     )
 })
 }
@@ -2015,8 +2103,9 @@ public static func fromHex(hexEncoded: String)throws  -> Ed25519Signature  {
      */
 public static func fromMultibase(multibase: String)throws  -> Ed25519Signature  {
     return try  FfiConverterTypeEd25519Signature_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_ed25519signature_from_multibase(
-        FfiConverterString.lower(multibase),$0
+        FfiConverterString.lower(multibase),uniffiCallStatus
     )
 })
 }
@@ -2029,8 +2118,9 @@ public static func fromMultibase(multibase: String)throws  -> Ed25519Signature  
      */
 open func toHex() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_ed25519signature_to_hex(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -2040,8 +2130,9 @@ open func toHex() -> String  {
      */
 open func toMultibase() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_ed25519signature_to_multibase(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -2209,8 +2300,9 @@ open class Ed25519SigningKey: Ed25519SigningKeyProtocol, @unchecked Sendable {
      */
 public static func fromMultibase(multibase: String)throws  -> Ed25519SigningKey  {
     return try  FfiConverterTypeEd25519SigningKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_ed25519signingkey_from_multibase(
-        FfiConverterString.lower(multibase),$0
+        FfiConverterString.lower(multibase),uniffiCallStatus
     )
 })
 }
@@ -2220,8 +2312,9 @@ public static func fromMultibase(multibase: String)throws  -> Ed25519SigningKey 
      */
 public static func fromPkcs8Pem(pkcs8Pem: String)throws  -> Ed25519SigningKey  {
     return try  FfiConverterTypeEd25519SigningKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_ed25519signingkey_from_pkcs8_pem(
-        FfiConverterString.lower(pkcs8Pem),$0
+        FfiConverterString.lower(pkcs8Pem),uniffiCallStatus
     )
 })
 }
@@ -2233,7 +2326,8 @@ public static func fromPkcs8Pem(pkcs8Pem: String)throws  -> Ed25519SigningKey  {
      */
 public static func generate() -> Ed25519SigningKey  {
     return try!  FfiConverterTypeEd25519SigningKey_lift(try! rustCall() {
-    uniffi_did_sidekicks_fn_constructor_ed25519signingkey_generate($0
+        uniffiCallStatus in
+    uniffi_did_sidekicks_fn_constructor_ed25519signingkey_generate(uniffiCallStatus
     )
 })
 }
@@ -2243,8 +2337,9 @@ public static func generate() -> Ed25519SigningKey  {
      */
 public static func readPkcs8PemFile(pkcs8PemFile: String)throws  -> Ed25519SigningKey  {
     return try  FfiConverterTypeEd25519SigningKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_ed25519signingkey_read_pkcs8_pem_file(
-        FfiConverterString.lower(pkcs8PemFile),$0
+        FfiConverterString.lower(pkcs8PemFile),uniffiCallStatus
     )
 })
 }
@@ -2256,8 +2351,9 @@ public static func readPkcs8PemFile(pkcs8PemFile: String)throws  -> Ed25519Signi
      */
 open func getVerifyingKey() -> Ed25519VerifyingKey  {
     return try!  FfiConverterTypeEd25519VerifyingKey_lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_ed25519signingkey_get_verifying_key(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -2267,9 +2363,10 @@ open func getVerifyingKey() -> Ed25519VerifyingKey  {
      */
 open func sign(message: String) -> Ed25519Signature  {
     return try!  FfiConverterTypeEd25519Signature_lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_ed25519signingkey_sign(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(message),$0
+        FfiConverterString.lower(message),uniffiCallStatus
     )
 })
 }
@@ -2281,9 +2378,10 @@ open func sign(message: String) -> Ed25519Signature  {
      */
 open func signHex(messageHex: String)throws  -> Ed25519Signature  {
     return try  FfiConverterTypeEd25519Signature_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_ed25519signingkey_sign_hex(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(messageHex),$0
+        FfiConverterString.lower(messageHex),uniffiCallStatus
     )
 })
 }
@@ -2297,8 +2395,9 @@ open func signHex(messageHex: String)throws  -> Ed25519Signature  {
      */
 open func toMultibase() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_ed25519signingkey_to_multibase(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -2307,9 +2406,10 @@ open func toMultibase() -> String  {
      * Write ASN.1 DER-encoded PKCS#8 private key to the given path.
      */
 open func writePkcs8PemFile(pkcs8PemFile: String)throws   {try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_ed25519signingkey_write_pkcs8_pem_file(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(pkcs8PemFile),$0
+        FfiConverterString.lower(pkcs8PemFile),uniffiCallStatus
     )
 }
 }
@@ -2480,8 +2580,9 @@ open class Ed25519VerifyingKey: Ed25519VerifyingKeyProtocol, @unchecked Sendable
      */
 public static func fromMultibase(multibase: String)throws  -> Ed25519VerifyingKey  {
     return try  FfiConverterTypeEd25519VerifyingKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_ed25519verifyingkey_from_multibase(
-        FfiConverterString.lower(multibase),$0
+        FfiConverterString.lower(multibase),uniffiCallStatus
     )
 })
 }
@@ -2503,8 +2604,9 @@ public static func fromMultibase(multibase: String)throws  -> Ed25519VerifyingKe
      */
 public static func fromPublicKeyJwk(publicKeyJwk: String)throws  -> Ed25519VerifyingKey  {
     return try  FfiConverterTypeEd25519VerifyingKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_ed25519verifyingkey_from_public_key_jwk(
-        FfiConverterString.lower(publicKeyJwk),$0
+        FfiConverterString.lower(publicKeyJwk),uniffiCallStatus
     )
 })
 }
@@ -2514,8 +2616,9 @@ public static func fromPublicKeyJwk(publicKeyJwk: String)throws  -> Ed25519Verif
      */
 public static func fromPublicKeyPem(publicKeyPem: String)throws  -> Ed25519VerifyingKey  {
     return try  FfiConverterTypeEd25519VerifyingKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_ed25519verifyingkey_from_public_key_pem(
-        FfiConverterString.lower(publicKeyPem),$0
+        FfiConverterString.lower(publicKeyPem),uniffiCallStatus
     )
 })
 }
@@ -2525,8 +2628,9 @@ public static func fromPublicKeyPem(publicKeyPem: String)throws  -> Ed25519Verif
      */
 public static func readPublicKeyPemFile(publicKeyPemFile: String)throws  -> Ed25519VerifyingKey  {
     return try  FfiConverterTypeEd25519VerifyingKey_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_ed25519verifyingkey_read_public_key_pem_file(
-        FfiConverterString.lower(publicKeyPemFile),$0
+        FfiConverterString.lower(publicKeyPemFile),uniffiCallStatus
     )
 })
 }
@@ -2547,8 +2651,9 @@ public static func readPublicKeyPemFile(publicKeyPemFile: String)throws  -> Ed25
      */
 open func toJwk() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_ed25519verifyingkey_to_jwk(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -2563,8 +2668,9 @@ open func toJwk() -> String  {
      */
 open func toMultibase() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_ed25519verifyingkey_to_multibase(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -2573,10 +2679,11 @@ open func toMultibase() -> String  {
      * Strictly verify a signature on a message with this public key.
      */
 open func verifyStrict(message: String, signature: Ed25519Signature)throws   {try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_ed25519verifyingkey_verify_strict(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(message),
-        FfiConverterTypeEd25519Signature_lower(signature),$0
+        FfiConverterTypeEd25519Signature_lower(signature),uniffiCallStatus
     )
 }
 }
@@ -2585,10 +2692,11 @@ open func verifyStrict(message: String, signature: Ed25519Signature)throws   {tr
      * Strictly verify a signature on a hex message with this public key.
      */
 open func verifyStrictFromHex(messageHex: String, signature: Ed25519Signature)throws   {try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_ed25519verifyingkey_verify_strict_from_hex(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(messageHex),
-        FfiConverterTypeEd25519Signature_lower(signature),$0
+        FfiConverterTypeEd25519Signature_lower(signature),uniffiCallStatus
     )
 }
 }
@@ -2597,9 +2705,10 @@ open func verifyStrictFromHex(messageHex: String, signature: Ed25519Signature)th
      * Write ASN.1 DER-encoded public key to the given path.
      */
 open func writePublicKeyPemFile(publicKeyPemFile: String)throws   {try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_ed25519verifyingkey_write_public_key_pem_file(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(publicKeyPemFile),$0
+        FfiConverterString.lower(publicKeyPemFile),uniffiCallStatus
     )
 }
 }
@@ -2745,8 +2854,9 @@ open class EddsaJcs2022Cryptosuite: EddsaJcs2022CryptosuiteProtocol, @unchecked 
      */
 public static func fromSigningKey(signingKey: Ed25519SigningKey) -> EddsaJcs2022Cryptosuite  {
     return try!  FfiConverterTypeEddsaJcs2022Cryptosuite_lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_eddsajcs2022cryptosuite_from_signing_key(
-        FfiConverterTypeEd25519SigningKey_lower(signingKey),$0
+        FfiConverterTypeEd25519SigningKey_lower(signingKey),uniffiCallStatus
     )
 })
 }
@@ -2756,8 +2866,9 @@ public static func fromSigningKey(signingKey: Ed25519SigningKey) -> EddsaJcs2022
      */
 public static func fromVerifyingKey(verifyingKey: Ed25519VerifyingKey) -> EddsaJcs2022Cryptosuite  {
     return try!  FfiConverterTypeEddsaJcs2022Cryptosuite_lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_constructor_eddsajcs2022cryptosuite_from_verifying_key(
-        FfiConverterTypeEd25519VerifyingKey_lower(verifyingKey),$0
+        FfiConverterTypeEd25519VerifyingKey_lower(verifyingKey),uniffiCallStatus
     )
 })
 }
@@ -2775,10 +2886,11 @@ public static func fromVerifyingKey(verifyingKey: Ed25519VerifyingKey) -> EddsaJ
      */
 open func addProof(unsecuredDocument: String, options: CryptoSuiteProofOptions)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_eddsajcs2022cryptosuite_add_proof(
             self.uniffiCloneHandle(),
         FfiConverterString.lower(unsecuredDocument),
-        FfiConverterTypeCryptoSuiteProofOptions_lower(options),$0
+        FfiConverterTypeCryptoSuiteProofOptions_lower(options),uniffiCallStatus
     )
 })
 }
@@ -2791,10 +2903,11 @@ open func addProof(unsecuredDocument: String, options: CryptoSuiteProofOptions)t
      * The `KeySignatureError` error code indicates if verification of a signature on a hex message with this verification key fails.
      */
 open func verifyProof(proof: DataIntegrityProof, docHash: String)throws   {try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_eddsajcs2022cryptosuite_verify_proof(
             self.uniffiCloneHandle(),
         FfiConverterTypeDataIntegrityProof_lower(proof),
-        FfiConverterString.lower(docHash),$0
+        FfiConverterString.lower(docHash),uniffiCallStatus
     )
 }
 }
@@ -2934,7 +3047,8 @@ open class JcsSha256Hasher: JcsSha256HasherProtocol, @unchecked Sendable {
      */
 public static func build() -> JcsSha256Hasher  {
     return try!  FfiConverterTypeJcsSha256Hasher_lift(try! rustCall() {
-    uniffi_did_sidekicks_fn_constructor_jcssha256hasher_build($0
+        uniffiCallStatus in
+    uniffi_did_sidekicks_fn_constructor_jcssha256hasher_build(uniffiCallStatus
     )
 })
 }
@@ -2948,9 +3062,10 @@ public static func build() -> JcsSha256Hasher  {
      */
 open func base58btcEncodeMultihash(json: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_jcssha256hasher_base58btc_encode_multihash(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(json),$0
+        FfiConverterString.lower(json),uniffiCallStatus
     )
 })
 }
@@ -2964,9 +3079,10 @@ open func base58btcEncodeMultihash(json: String)throws  -> String  {
      */
 open func encodeHex(json: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_method_jcssha256hasher_encode_hex(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(json),$0
+        FfiConverterString.lower(json),uniffiCallStatus
     )
 })
 }
@@ -3166,7 +3282,8 @@ public func FfiConverterTypeVerificationMethod_lower(_ value: VerificationMethod
 /**
  * Represents any error condition that might occur in conjunction with `DidLogEntryValidator`
  */
-public enum DidLogEntryValidatorError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+public 
+enum DidLogEntryValidatorError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
@@ -3258,7 +3375,8 @@ public func FfiConverterTypeDidLogEntryValidatorError_lower(_ value: DidLogEntry
  * The error accompanying any `DidResolver` implementation.
  * It might occur while calling `DidResolver` methods.
  */
-public enum DidResolverError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+public 
+enum DidResolverError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
@@ -3404,7 +3522,8 @@ public func FfiConverterTypeDidResolverError_lower(_ value: DidResolverError) ->
 /**
  * The error accompanying this crate.
  */
-public enum DidSidekicksError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+public 
+enum DidSidekicksError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
@@ -3645,13 +3764,13 @@ public func FfiConverterTypeDidSidekicksError_lower(_ value: DidSidekicksError) 
     return FfiConverterTypeDidSidekicksError.lower(value)
 }
 
-// Note that we don't yet support `indirect` for enums.
-// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 
 public enum VerificationType: Equatable, Hashable {
     
     case multikey
     case jsonWebKey2020
+    case jsonWebKey
     case ed25519VerificationKey2020
 
 
@@ -3678,7 +3797,9 @@ public struct FfiConverterTypeVerificationType: FfiConverterRustBuffer {
         
         case 2: return .jsonWebKey2020
         
-        case 3: return .ed25519VerificationKey2020
+        case 3: return .jsonWebKey
+        
+        case 4: return .ed25519VerificationKey2020
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -3696,8 +3817,12 @@ public struct FfiConverterTypeVerificationType: FfiConverterRustBuffer {
             writeInt(&buf, Int32(2))
         
         
-        case .ed25519VerificationKey2020:
+        case .jsonWebKey:
             writeInt(&buf, Int32(3))
+        
+        
+        case .ed25519VerificationKey2020:
+            writeInt(&buf, Int32(4))
         
         }
     }
@@ -3975,9 +4100,10 @@ fileprivate struct FfiConverterDictionaryStringTypeDidMethodParameter: FfiConver
  */
 public func getKeyFromDidDoc(didDoc: String, keyId: String)throws  -> Jwk  {
     return try  FfiConverterTypeJwk_lift(try rustCallWithError(FfiConverterTypeDidSidekicksError_lift) {
+        uniffiCallStatus in
     uniffi_did_sidekicks_fn_func_get_key_from_did_doc(
         FfiConverterString.lower(didDoc),
-        FfiConverterString.lower(keyId),$0
+        FfiConverterString.lower(keyId),uniffiCallStatus
     )
 })
 }
@@ -4000,22 +4126,22 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_func_get_key_from_did_doc() != 6953) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_diddoc_get_assertion_method() != 37191) {
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_assertion_method() != 59206) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_diddoc_get_authentication() != 55028) {
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_authentication() != 47524) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_diddoc_get_capability_delegation() != 6044) {
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_capability_delegation() != 64907) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_diddoc_get_capability_invocation() != 61251) {
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_capability_invocation() != 41342) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_diddoc_get_context() != 41159) {
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_context() != 6521) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_diddoc_get_controller() != 47496) {
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_controller() != 17191) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_diddoc_get_deactivated() != 51038) {
@@ -4033,10 +4159,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_method_diddoc_get_key_by_method_id() != 58619) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_diddoc_get_profile_version() != 51378) {
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_profile_version() != 19991) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_diddoc_get_verification_method() != 57161) {
+    if (uniffi_did_sidekicks_checksum_method_diddoc_get_verification_method() != 33636) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_diddoc_to_json() != 11627) {
@@ -4045,7 +4171,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_method_diddocextended_get_did_doc() != 34983) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_diddocextended_get_did_method_parameters() != 19911) {
+    if (uniffi_did_sidekicks_checksum_method_diddocextended_get_did_method_parameters() != 62837) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_didlogentryjsonschema_get_json_schema() != 46254) {
@@ -4054,13 +4180,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_method_didlogentryvalidator_validate() != 36939) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_bool_value() != 27336) {
+    if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_bool_value() != 43257) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_f64_value() != 26088) {
+    if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_f64_value() != 6831) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_i64_value() != 61208) {
+    if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_i64_value() != 48053) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_json_text() != 9466) {
@@ -4069,13 +4195,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_name() != 15801) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_string_array_value() != 32815) {
+    if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_string_array_value() != 32735) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_string_value() != 39370) {
+    if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_string_value() != 12935) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_u64_value() != 50082) {
+    if (uniffi_did_sidekicks_checksum_method_didmethodparameter_get_u64_value() != 37279) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_method_didmethodparameter_is_array() != 58978) {
@@ -4159,7 +4285,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_constructor_cryptosuiteproofoptions_build() != 60667) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_constructor_cryptosuiteproofoptions_new_eddsa_jcs_2022() != 15190) {
+    if (uniffi_did_sidekicks_checksum_constructor_cryptosuiteproofoptions_new_eddsa_jcs_2022() != 65205) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_constructor_dataintegrityproof_from_json_string() != 18631) {
@@ -4168,7 +4294,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_sidekicks_checksum_constructor_diddoc_from_json() != 34742) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_sidekicks_checksum_constructor_didlogentryvalidator_from() != 35475) {
+    if (uniffi_did_sidekicks_checksum_constructor_didlogentryvalidator_from() != 7108) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_sidekicks_checksum_constructor_ed25519signature_from_hex() != 54324) {
