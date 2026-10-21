@@ -39,6 +39,52 @@ fileprivate extension ForeignBytes {
     init(bufferPointer: UnsafeBufferPointer<UInt8>) {
         self.init(len: Int32(bufferPointer.count), data: bufferPointer.baseAddress)
     }
+
+    init(rawBufferPointer: UnsafeRawBufferPointer) {
+        self.init(
+            len: Int32(rawBufferPointer.count),
+            data: rawBufferPointer.baseAddress?.assumingMemoryBound(to: UInt8.self)
+        )
+    }
+}
+
+// Converter for `&[u8]` / `[ByRef] bytes` arguments.
+//
+// Conforms to `FfiConverter` so the compiler enforces the full converter
+// method set. Only the scope-bound `lower(_:_body:)` overload is sound —
+// zero-copy byte buffers only flow foreign -> Rust, and only in argument
+// position. The four protocol-witness methods (`lift`, `lower`, `read`,
+// `write`) `fatalError` at runtime if anyone reaches them.
+//
+// The scope-bound `lower` takes a closure because the `ForeignBytes`
+// pointer is only guaranteed valid for the duration of
+// `Data.withUnsafeBytes`. Callers must run the full FFI call inside
+// the closure body.
+fileprivate enum FfiConverterByRefBytes: FfiConverter {
+    typealias SwiftType = Data
+    typealias FfiType = ForeignBytes
+
+    static func lower<R>(_ value: Data, _ body: (ForeignBytes) throws -> R) rethrows -> R {
+        return try value.withUnsafeBytes { rawBuf in
+            try body(ForeignBytes(rawBufferPointer: rawBuf))
+        }
+    }
+
+    static func lower(_ value: Data) -> ForeignBytes {
+        fatalError("ByRef bytes cannot use the plain lower: returning ForeignBytes escapes the Data.withUnsafeBytes scope. Use the scope-bound lower(_:_body:) overload instead.")
+    }
+
+    static func lift(_ value: ForeignBytes) throws -> Data {
+        fatalError("ByRef bytes cannot be lifted: zero-copy &[u8] only flows foreign->Rust")
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+        fatalError("ByRef bytes cannot be read from a buffer: zero-copy &[u8] is only supported in argument position, not nested in records/options/etc.")
+    }
+
+    static func write(_ value: Data, into buf: inout [UInt8]) {
+        fatalError("ByRef bytes cannot be written to a buffer: zero-copy &[u8] is only supported in argument position, not nested in records/options/etc.")
+    }
 }
 
 // For every type used in the interface, we provide helper methods for conveniently
@@ -592,8 +638,9 @@ open class Did: DidProtocol, @unchecked Sendable {
 public convenience init(did: String)throws  {
     let handle =
         try rustCallWithError(FfiConverterTypeDidResolveError_lift) {
+        uniffiCallStatus in
     uniffi_didresolver_fn_constructor_did_new(
-        FfiConverterString.lower(did),$0
+        FfiConverterString.lower(did),uniffiCallStatus
     )
 }
     self.init(unsafeFromHandle: handle)
@@ -616,8 +663,9 @@ public convenience init(did: String)throws  {
      */
 open func asString() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_didresolver_fn_method_did_as_string(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -628,8 +676,9 @@ open func asString() -> String  {
      */
 open func getHttpsUrl() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_didresolver_fn_method_did_get_https_url(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -639,8 +688,9 @@ open func getHttpsUrl() -> String  {
      */
 open func getMethod() -> DidMethod  {
     return try!  FfiConverterTypeDidMethod_lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_didresolver_fn_method_did_get_method(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -650,8 +700,9 @@ open func getMethod() -> DidMethod  {
      */
 open func getScid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_didresolver_fn_method_did_get_scid(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -664,8 +715,9 @@ open func getScid() -> String  {
      */
 open func getUrl()throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDidResolveError_lift) {
+        uniffiCallStatus in
     uniffi_didresolver_fn_method_did_get_url(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -682,9 +734,10 @@ open func getUrl()throws  -> String  {
      */
 open func resolve(didLog: String)throws  -> DidDoc  {
     return try  FfiConverterTypeDidDoc_lift(try rustCallWithError(FfiConverterTypeDidResolveError_lift) {
+        uniffiCallStatus in
     uniffi_didresolver_fn_method_did_resolve(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(didLog),$0
+        FfiConverterString.lower(didLog),uniffiCallStatus
     )
 })
 }
@@ -703,9 +756,10 @@ open func resolve(didLog: String)throws  -> DidDoc  {
      */
 open func resolveAll(didLog: String)throws  -> DidDocExtended  {
     return try  FfiConverterTypeDidDocExtended_lift(try rustCallWithError(FfiConverterTypeDidResolveError_lift) {
+        uniffiCallStatus in
     uniffi_didresolver_fn_method_did_resolve_all(
             self.uniffiCloneHandle(),
-        FfiConverterString.lower(didLog),$0
+        FfiConverterString.lower(didLog),uniffiCallStatus
     )
 })
 }
@@ -757,8 +811,7 @@ public func FfiConverterTypeDid_lower(_ value: Did) -> UInt64 {
 
 
 
-// Note that we don't yet support `indirect` for enums.
-// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 
 public enum DidMethod: Equatable, Hashable {
     
@@ -844,7 +897,8 @@ public func FfiConverterTypeDidMethod_lower(_ value: DidMethod) -> RustBuffer {
  * The error accompanying `Did`.
  * It might occur while calling some of the `Did` constructors/methods.
  */
-public enum DidResolveError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+public 
+enum DidResolveError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
@@ -1023,8 +1077,9 @@ public func FfiConverterTypeDidResolveError_lower(_ value: DidResolveError) -> R
  */
 public func getDidFromAbsoluteKid(absoluteKid: String)throws  -> Did  {
     return try  FfiConverterTypeDid_lift(try rustCallWithError(FfiConverterTypeDidResolveError_lift) {
+        uniffiCallStatus in
     uniffi_didresolver_fn_func_get_did_from_absolute_kid(
-        FfiConverterString.lower(absoluteKid),$0
+        FfiConverterString.lower(absoluteKid),uniffiCallStatus
     )
 })
 }
