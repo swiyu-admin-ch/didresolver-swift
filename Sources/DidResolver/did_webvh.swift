@@ -39,6 +39,52 @@ fileprivate extension ForeignBytes {
     init(bufferPointer: UnsafeBufferPointer<UInt8>) {
         self.init(len: Int32(bufferPointer.count), data: bufferPointer.baseAddress)
     }
+
+    init(rawBufferPointer: UnsafeRawBufferPointer) {
+        self.init(
+            len: Int32(rawBufferPointer.count),
+            data: rawBufferPointer.baseAddress?.assumingMemoryBound(to: UInt8.self)
+        )
+    }
+}
+
+// Converter for `&[u8]` / `[ByRef] bytes` arguments.
+//
+// Conforms to `FfiConverter` so the compiler enforces the full converter
+// method set. Only the scope-bound `lower(_:_body:)` overload is sound —
+// zero-copy byte buffers only flow foreign -> Rust, and only in argument
+// position. The four protocol-witness methods (`lift`, `lower`, `read`,
+// `write`) `fatalError` at runtime if anyone reaches them.
+//
+// The scope-bound `lower` takes a closure because the `ForeignBytes`
+// pointer is only guaranteed valid for the duration of
+// `Data.withUnsafeBytes`. Callers must run the full FFI call inside
+// the closure body.
+fileprivate enum FfiConverterByRefBytes: FfiConverter {
+    typealias SwiftType = Data
+    typealias FfiType = ForeignBytes
+
+    static func lower<R>(_ value: Data, _ body: (ForeignBytes) throws -> R) rethrows -> R {
+        return try value.withUnsafeBytes { rawBuf in
+            try body(ForeignBytes(rawBufferPointer: rawBuf))
+        }
+    }
+
+    static func lower(_ value: Data) -> ForeignBytes {
+        fatalError("ByRef bytes cannot use the plain lower: returning ForeignBytes escapes the Data.withUnsafeBytes scope. Use the scope-bound lower(_:_body:) overload instead.")
+    }
+
+    static func lift(_ value: ForeignBytes) throws -> Data {
+        fatalError("ByRef bytes cannot be lifted: zero-copy &[u8] only flows foreign->Rust")
+    }
+
+    static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Data {
+        fatalError("ByRef bytes cannot be read from a buffer: zero-copy &[u8] is only supported in argument position, not nested in records/options/etc.")
+    }
+
+    static func write(_ value: Data, into buf: inout [UInt8]) {
+        fatalError("ByRef bytes cannot be written to a buffer: zero-copy &[u8] is only supported in argument position, not nested in records/options/etc.")
+    }
 }
 
 // For every type used in the interface, we provide helper methods for conveniently
@@ -587,9 +633,10 @@ open class WebVerifiableHistory: WebVerifiableHistoryProtocol, @unchecked Sendab
      */
 public static func resolve(didWebvh: String, didLog: String)throws  -> WebVerifiableHistory  {
     return try  FfiConverterTypeWebVerifiableHistory_lift(try rustCallWithError(FfiConverterTypeDidResolverError_lift) {
+        uniffiCallStatus in
     uniffi_did_webvh_fn_constructor_webverifiablehistory_resolve(
         FfiConverterString.lower(didWebvh),
-        FfiConverterString.lower(didLog),$0
+        FfiConverterString.lower(didLog),uniffiCallStatus
     )
 })
 }
@@ -601,8 +648,9 @@ public static func resolve(didWebvh: String, didLog: String)throws  -> WebVerifi
      */
 open func getDid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_webvh_fn_method_webverifiablehistory_get_did(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -612,8 +660,9 @@ open func getDid() -> String  {
      */
 open func getDidDoc() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_webvh_fn_method_webverifiablehistory_get_did_doc(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -624,8 +673,9 @@ open func getDidDoc() -> String  {
      */
 open func getDidDocObjThreadSafe() -> DidDoc  {
     return try!  FfiConverterTypeDidDoc_lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_webvh_fn_method_webverifiablehistory_get_did_doc_obj_thread_safe(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -635,8 +685,9 @@ open func getDidDocObjThreadSafe() -> DidDoc  {
      */
 open func getDidLog() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_webvh_fn_method_webverifiablehistory_get_did_log(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -646,8 +697,9 @@ open func getDidLog() -> String  {
      */
 open func getDidMethodParameters() -> WebVerifiableHistoryDidMethodParameters  {
     return try!  FfiConverterTypeWebVerifiableHistoryDidMethodParameters_lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_webvh_fn_method_webverifiablehistory_get_did_method_parameters(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -778,8 +830,9 @@ open class WebVerifiableHistoryDidMethodParameters: WebVerifiableHistoryDidMetho
      */
 open func getScid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_webvh_fn_method_webverifiablehistorydidmethodparameters_get_scid(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -789,8 +842,9 @@ open func getScid() -> String  {
      */
 open func getUpdateKeys() -> [String]  {
     return try!  FfiConverterSequenceString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_webvh_fn_method_webverifiablehistorydidmethodparameters_get_update_keys(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -800,8 +854,9 @@ open func getUpdateKeys() -> [String]  {
      */
 open func isDeactivated() -> Bool  {
     return try!  FfiConverterBool.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_webvh_fn_method_webverifiablehistorydidmethodparameters_is_deactivated(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -939,8 +994,9 @@ open class WebVerifiableHistoryId: WebVerifiableHistoryIdProtocol, @unchecked Se
      */
 public static func parseDidWebvh(didWebvh: String)throws  -> WebVerifiableHistoryId  {
     return try  FfiConverterTypeWebVerifiableHistoryId_lift(try rustCallWithError(FfiConverterTypeWebVerifiableHistoryIdResolutionError_lift) {
+        uniffiCallStatus in
     uniffi_did_webvh_fn_constructor_webverifiablehistoryid_parse_did_webvh(
-        FfiConverterString.lower(didWebvh),$0
+        FfiConverterString.lower(didWebvh),uniffiCallStatus
     )
 })
 }
@@ -952,8 +1008,9 @@ public static func parseDidWebvh(didWebvh: String)throws  -> WebVerifiableHistor
      */
 open func getScid() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_webvh_fn_method_webverifiablehistoryid_get_scid(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -963,8 +1020,9 @@ open func getScid() -> String  {
      */
 open func getUrl() -> String  {
     return try!  FfiConverterString.lift(try! rustCall() {
+        uniffiCallStatus in
     uniffi_did_webvh_fn_method_webverifiablehistoryid_get_url(
-            self.uniffiCloneHandle(),$0
+            self.uniffiCloneHandle(),uniffiCallStatus
     )
 })
 }
@@ -1016,8 +1074,7 @@ public func FfiConverterTypeWebVerifiableHistoryId_lower(_ value: WebVerifiableH
 
 
 
-// Note that we don't yet support `indirect` for enums.
-// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
 /**
  * W.r.t. corresponding specification version available at https://identity.foundation/didwebvh
  *
@@ -1101,7 +1158,8 @@ public func FfiConverterTypeWebVerifiableHistoryDidLogEntryJsonSchema_lower(_ va
  * The error accompanying `WebVerifiableHistoryId`.
  * It might occur while calling `WebVerifiableHistoryId` methods.
  */
-public enum WebVerifiableHistoryIdResolutionError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
+public 
+enum WebVerifiableHistoryIdResolutionError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
@@ -1246,7 +1304,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_did_webvh_checksum_method_webverifiablehistorydidmethodparameters_get_scid() != 26418) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_did_webvh_checksum_method_webverifiablehistorydidmethodparameters_get_update_keys() != 2362) {
+    if (uniffi_did_webvh_checksum_method_webverifiablehistorydidmethodparameters_get_update_keys() != 15671) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_did_webvh_checksum_method_webverifiablehistorydidmethodparameters_is_deactivated() != 31397) {
