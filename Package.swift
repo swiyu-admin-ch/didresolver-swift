@@ -9,7 +9,7 @@ let checksum = "e27802f072a339892fe7eacd62867eb4e376bfe0a473f857296ba194126fe264
 
 let package = Package(
     name: "DidResolver",
-    platforms: [.iOS(.v15)],
+    platforms: [.iOS(.v14)],
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
