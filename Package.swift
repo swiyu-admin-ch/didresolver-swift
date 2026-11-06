@@ -1,15 +1,15 @@
 // swift-tools-version:5.3
 import PackageDescription
 
-let version = "2.10.0"
+let version = "2.10.1"
 let xcframework_name = "didresolver"
 let binary_target_url_github_owner = "swiyu-admin-ch"
 let binary_target_url_github_repo = "didresolver-swift"
-let checksum = "55983e98f63021a520690c2e31467f259935f764b9995c14bfbcaed69f334525"
+let checksum = "e27802f072a339892fe7eacd62867eb4e376bfe0a473f857296ba194126fe264"
 
 let package = Package(
     name: "DidResolver",
-    platforms: [.iOS(.v14)],
+    platforms: [.iOS(.v15)],
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
