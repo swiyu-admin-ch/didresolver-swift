@@ -3144,10 +3144,14 @@ public struct Jwk: Equatable, Hashable {
     public var y: String?
     public var keyUse: String?
     public var keyOps: [String]?
+    public var x5u: String?
+    public var x5c: [String]?
+    public var x5t: String?
+    public var x5tS256: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(alg: String?, kid: String?, kty: String?, crv: String?, x: String?, y: String?, keyUse: String?, keyOps: [String]?) {
+    public init(alg: String?, kid: String?, kty: String?, crv: String?, x: String?, y: String?, keyUse: String?, keyOps: [String]?, x5u: String?, x5c: [String]?, x5t: String?, x5tS256: String?) {
         self.alg = alg
         self.kid = kid
         self.kty = kty
@@ -3156,6 +3160,10 @@ public struct Jwk: Equatable, Hashable {
         self.y = y
         self.keyUse = keyUse
         self.keyOps = keyOps
+        self.x5u = x5u
+        self.x5c = x5c
+        self.x5t = x5t
+        self.x5tS256 = x5tS256
     }
 
     
@@ -3181,7 +3189,11 @@ public struct FfiConverterTypeJwk: FfiConverterRustBuffer {
                 x: FfiConverterOptionString.read(from: &buf), 
                 y: FfiConverterOptionString.read(from: &buf), 
                 keyUse: FfiConverterOptionString.read(from: &buf), 
-                keyOps: FfiConverterOptionSequenceString.read(from: &buf)
+                keyOps: FfiConverterOptionSequenceString.read(from: &buf), 
+                x5u: FfiConverterOptionString.read(from: &buf), 
+                x5c: FfiConverterOptionSequenceString.read(from: &buf), 
+                x5t: FfiConverterOptionString.read(from: &buf), 
+                x5tS256: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -3194,6 +3206,10 @@ public struct FfiConverterTypeJwk: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.y, into: &buf)
         FfiConverterOptionString.write(value.keyUse, into: &buf)
         FfiConverterOptionSequenceString.write(value.keyOps, into: &buf)
+        FfiConverterOptionString.write(value.x5u, into: &buf)
+        FfiConverterOptionSequenceString.write(value.x5c, into: &buf)
+        FfiConverterOptionString.write(value.x5t, into: &buf)
+        FfiConverterOptionString.write(value.x5tS256, into: &buf)
     }
 }
 
